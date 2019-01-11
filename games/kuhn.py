@@ -1,6 +1,4 @@
-from functools import reduce
 from data_structures.trees import Tree, Node, ChanceNode
-import random
 
 def build_kuhn_tree(num_players, rank):
     """
