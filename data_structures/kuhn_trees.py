@@ -2,8 +2,12 @@ from functools import reduce
 from data_structures.trees import Tree, Node, ChanceNode
 import random
 
-
 def build_kuhn_tree(num_players, rank):
+    """
+    Build a tree for the game of Kuhn with a given number of players and a given number of ranks in the deck (i.e. how
+    many cards).
+    """
+
     root = ChanceNode(0)
     
     tree = Tree(num_players, 0, root)
@@ -14,7 +18,6 @@ def build_kuhn_tree(num_players, rank):
         n = tree.addNode(0, parent = root, probability = hand_probability, actionName = str(hand))
         build_kuhn_hand_tree(hand, ['n'] * num_players, 0, n, tree)
         
-    # TODO: infosets prostprocessing
     for i in range(len(hands)):
         for j in range(i+1, len(hands)):
             players_to_merge = []
@@ -25,9 +28,12 @@ def build_kuhn_tree(num_players, rank):
             
     return tree
 
-# Takes two identically shaped trees (rooted at node1 and node2) and put all the nodes
-# belonging to players in players_to_merge in pairwise information sets
 def create_information_sets(node1, node2, players_to_merge):
+    """
+    Takes two identically shaped trees (rooted at node1 and node2) and put all the nodes
+    belonging to players in players_to_merge in pairwise information sets.
+    """
+
     if(node1.isLeaf()):
         return
     
@@ -40,6 +46,10 @@ def create_information_sets(node1, node2, players_to_merge):
         create_information_sets(node1.children[i], node2.children[i], players_to_merge)
 
 def build_kuhn_hand_tree(hand, previous_moves, current_player, current_node, tree):
+    """
+    Recursively build the subtree for the Kuhn game where the hand is fixed.
+    """
+
     actionPrefix = 'p' + str(current_player)
     num_players = len(hand)
     
@@ -80,6 +90,10 @@ def build_kuhn_hand_tree(hand, previous_moves, current_player, current_node, tre
         build_kuhn_hand_tree(hand, previous_moves.copy(), next_player, betNode, tree)
 
 def kuhn_utility(hand, moves):
+    """
+    Get the utility of a Kuhn game given the hand and how the players have played.
+    """
+
     num_players = len(hand)
     
     pot = num_players + len(list(filter(lambda el: el == 'b', moves)))
@@ -96,6 +110,10 @@ def kuhn_utility(hand, moves):
     return utility
 
 def build_all_possible_hands(num_players, ranks):
+    """
+    Build all the possible hands for the game of Kuhn with a given number of players and a given set of cards.
+    """
+
     if(num_players <= 0):
         return [[]]
     

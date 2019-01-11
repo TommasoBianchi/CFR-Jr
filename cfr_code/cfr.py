@@ -2,6 +2,10 @@ from data_structures.cfr_trees import CFRJointStrategy
 from functools import reduce
 
 def CFR(node, player, pi):
+    """
+    Vanilla CFR algorithm.
+    """
+
     n_players = len(pi)
     node.visits += reduce(lambda x, y: x * y, pi, 1)
     

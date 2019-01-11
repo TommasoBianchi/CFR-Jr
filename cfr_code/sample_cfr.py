@@ -1,7 +1,16 @@
 from data_structures.cfr_trees import CFRJointStrategy
 from functools import reduce
+import time
 
 def sampleCFR(node, player, pi, action_plan):
+    """
+    SCFR algorithm.
+    node = the current node the algorithm is in.
+    player = the player for which the algorithm is being run.
+    pi = a probability vector containing, for each player, the probability to reach the current node.
+    action_plan = the sampled action plan.
+    """
+
     n_players = len(pi)
     node.visits += reduce(lambda x, y: x * y, pi, 1)
     
@@ -28,12 +37,6 @@ def sampleCFR(node, player, pi, action_plan):
             pi[iset.player] = 0
             v_alt[a] = sampleCFR(node.children[a], player, pi, action_plan)
             pi[iset.player] = old_pi
-            
-        #############################################################################################
-        # TODO: check (do I really need to use current_strategy, or is it more correct to say
-        # that v = v_alt[sampled_action]?)
-        #v += v_alt[a] * iset.current_strategy[a]
-        #############################################################################################
         
     v = v_alt[sampled_action]
     
@@ -43,12 +46,7 @@ def sampleCFR(node, player, pi, action_plan):
             if(i != player):
                 pi_other *= pi[i]
 
-        for a in range(len(node.children)):            
-            #################################################################################
-            ###### CFR+ seems not to be working
-            #iset.cumulative_regret[a] += pi_other * max(0, (v_alt[a] - v)) # CFR+
-            #################################################################################
-            
+        for a in range(len(node.children)):
             ##### CFR+ #####
             iset.cumulative_regret[a] = max(iset.cumulative_regret[a] + pi_other * (v_alt[a] - v), 0)
             
@@ -59,6 +57,14 @@ def sampleCFR(node, player, pi, action_plan):
 
 def SolveWithSampleCFR(cfr_tree, iterations, perc = 10, show_perc = False, checkEveryIteration = -1,
                       bound_joint_size = True):
+    """
+    Find a NFCCE in a given extensive-form tree with the SCFR algorithm, run for a given amount of iterations.
+    If show_perc is True, every perc% of the target iterations are done a message is shown on the console.
+    checkEveryIteration is the frequency to collect convergence data, such as the epsilon or the elapsed time.
+    If bound_joint_size is True the joint strategy is created with space for at most 2 * |A| plans, otherwise it is
+    created with an unbounded space.
+    """
+
     if(bound_joint_size):
         jointStrategy = CFRJointStrategy(cfr_tree.numOfActions * 2)
     else:
@@ -67,8 +73,10 @@ def SolveWithSampleCFR(cfr_tree, iterations, perc = 10, show_perc = False, check
     
     # Graph data
     graph_data = []
+
+    start_time = time.time()
     
-    for i in range(iterations):
+    for i in range(1, iterations+1):
         if(show_perc and (i+1) % (iterations / 100 * perc) == 0):
             print(str((i+1) / (iterations / 100 * perc) * perc) + "%")
             
@@ -78,11 +86,6 @@ def SolveWithSampleCFR(cfr_tree, iterations, perc = 10, show_perc = False, check
         # Run CFR for each player
         for p in range(player_count):
             sampleCFR(cfr_tree.root, p, [1] * player_count, action_plan)
-        
-        # Run CFR for each player (in parallel)
-        #with Pool(player_count) as p:
-        #    p.starmap(sampleCFR, 
-        #              [(cfr_tree.root, p_id, [1] * player_count, action_plan) for p_id in range(player_count)])
             
         # Update the current strategy for each information set
         for infoset in cfr_tree.information_sets.values():
@@ -90,12 +93,14 @@ def SolveWithSampleCFR(cfr_tree, iterations, perc = 10, show_perc = False, check
             
         jointStrategy.addActionPlan(CFRJointStrategy.reduceActionPlan(action_plan, cfr_tree))
         
-        if(checkEveryIteration > 0 and i % checkEveryIteration == 0 and i != 0):
+        if(checkEveryIteration > 0 and i % checkEveryIteration == 0):
             data = {'epsilon': cfr_tree.checkEquilibrium(jointStrategy),
                     'absolute_joint_size': jointStrategy.frequencyCount,
                     'relative_joint_size': jointStrategy.frequencyCount / (i + 1),
                     'max_plan_frequency': max(jointStrategy.plans.values()),
-                    'iteration_number': i}
+                    'iteration_number': i,
+                    'duration': time.time() - start_time}
             graph_data.append(data)
+            start_time = time.time()
         
     return {'utility': cfr_tree.getUtility(jointStrategy), 'joint': jointStrategy, 'graph_data': graph_data}

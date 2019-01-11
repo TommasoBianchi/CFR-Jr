@@ -1,6 +1,10 @@
 import matplotlib.pyplot as plt
 
 def graphs_from_cfr_results(results):
+	"""
+	Draw graphs from the data obtained from a run of SCFR.
+	"""
+
 	epsilons_graph = list(map(lambda el: max(0, -min(el['epsilon'])), results['graph_data']))
 	absolute_joint_size_graph = list(map(lambda el: el['absolute_joint_size'], results['graph_data']))
 	relative_joint_size_graph = list(map(lambda el: el['relative_joint_size'], results['graph_data']))
