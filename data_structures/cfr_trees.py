@@ -1,0 +1,462 @@
+from functools import reduce
+from data_structures.trees import Tree, Node, Leaf, randomTree
+import random
+import math
+import re
+import time
+
+class CFRTree:
+    def __init__(self, base_tree):
+        self.root = CFRChanceNode(base_tree.root) if base_tree.root.isChance() else CFRNode(base_tree.root)
+        self.information_sets = {}
+        self.numOfActions = 0
+        self.numOfPlayers = base_tree.numOfPlayers
+        
+        nodes_to_expand = [ self.root ]
+        
+        while(len(nodes_to_expand) > 0):
+            node = nodes_to_expand.pop()
+            
+            if(node.isChance()):
+                for child in node.children:
+                    nodes_to_expand.append(child)
+                continue
+            
+            iset_id = node.base_node.information_set
+            if(iset_id < 0):
+                # This is a leaf (or an error has occurred)
+                continue
+            
+            for child in node.children:
+                nodes_to_expand.append(child)
+                self.numOfActions += 1
+            
+            if(iset_id in self.information_sets):
+                node.information_set = self.information_sets[iset_id]
+                iset.addNode(node)
+            else:
+                iset = CFRInformationSet(iset_id, node.player, len(node.children), node.base_node.getSequence(node.player), self)
+                iset.addNode(node)
+                self.information_sets[iset_id] = iset
+                node.information_set = iset
+                
+        self.infosets_by_player = []
+        for p in range(self.numOfPlayers):
+            p_isets = list(filter(lambda i: i.player == p, self.information_sets.values()))
+            self.infosets_by_player.append(p_isets)
+                
+    def sampleActionPlan(self):
+        actionPlan = {}
+        for id in self.information_sets:
+            actionPlan[id] = self.information_sets[id].sampleAction()
+        return actionPlan
+    
+    def getUtility(self, joint):
+        utility = [0] * self.numOfPlayers
+        
+        for actionPlanString in joint.plans:
+            actionPlan = CFRJointStrategy.stringToActionPlan(actionPlanString)
+            frequency = joint.plans[actionPlanString] / joint.frequencyCount
+            
+            leafUtility = self.root.utilityFromActionPlan(actionPlan, default = [0] * self.numOfPlayers)
+            for i in range(len(utility)):
+                utility[i] += leafUtility[i] * frequency
+        
+        return utility
+    
+    def checkEquilibrium(self, joint):
+        for iset in self.information_sets.values():
+            iset.cached_V = None
+        
+        utility = self.getUtility(joint)
+                
+        for p in range(self.numOfPlayers):
+            root_infosets = list(filter(lambda i: i.player == p and i.sequence == {}, self.information_sets.values()))
+            
+            # If there are no root information sets, it means that player p has no information sets
+            # at all, so the equilibrium constraints are checked by default
+            if(len(root_infosets) == 0):
+                continue
+                
+            # If the root is a chance node, take it into consideration
+            # TODO: make more generic
+            if(self.root.isChance()):            
+                root = self.root
+                def map_lambda(i):
+                    probability = 0
+                    for n in i.nodes:
+                        probability += root.distribution[root.base_node.getActionLeadingToNode(n.base_node)]
+                    return i.V(joint) * probability
+                cum_v = sum(map(map_lambda, root_infosets))
+                #max_v = max(map(map_lambda, root_infosets))
+            else:
+                cum_v = reduce(lambda acc, i: acc + i.V(joint), root_infosets, 0)
+                #max_v = max(map(lambda i: i.V(joint), root_infosets))
+            
+            utility[p] -= cum_v
+            #utility[p] -= max_v            
+            
+        return utility
+
+class CFRNode:
+    def __init__(self, base_node, parent = None):
+        self.id = base_node.id
+        self.parent = parent
+        self.player = base_node.player
+        self.children = []
+        #self.information_set = information_set
+        self.incoming_action = base_node.incoming_action
+        
+        for child in base_node.children:
+            n = CFRChanceNode(child, self) if child.isChance() else CFRNode(child, self)
+            self.children.append(n)
+            
+        self.visits = 0
+        self.base_node = base_node
+        
+        self.is_leaf = len(self.children) == 0
+        
+        if(self.isLeaf()):
+            self.utility = base_node.utility
+        
+    def isLeaf(self):
+        return self.is_leaf
+    
+    def isChance(self):
+        return False
+    
+    def getAllLeafVisits(self):
+        if(self.isLeaf()):
+            return self.visits
+        else:
+            return reduce(lambda x, y: x + y, map(lambda i: i.getAllLeafVisits(), self.children))
+        
+    def getLeafDistribution(self, norm_factor):
+        if(self.isLeaf()):
+            #q1 = reduce(lambda x, y: x + y, map(lambda x: 'a' + str(x), \
+            #                                    self.base_node.getSequence(1)))
+            #q2 = reduce(lambda x, y: x + y, map(lambda x: 'a' + str(x), \
+            #                                    self.base_node.getSequence(2)))
+            #return ["(" + q1 + ", " + q2 + ") " + str(self.visits / norm_factor)]
+            return str(self.visits / norm_factor) + ":" + str(self.base_node) + "\n"
+        else:
+            return reduce(lambda x, y: x + y, 
+                          map(lambda i: i.getLeafDistribution(norm_factor), self.children))
+        
+    # Return the utility from the leaf reached following actionPlan and starting from this node.
+    # If no leaf is reached, return the default value.
+    def utilityFromActionPlan(self, actionPlan, default = None):
+        if(self.isLeaf()):
+            return self.utility
+        elif(self.information_set.id not in actionPlan):
+            return default
+        else:
+            return self.children[actionPlan[self.information_set.id]].utilityFromActionPlan(actionPlan, default)
+    
+    # Return the utility from the leaf reached following a modification of actionPlan and starting from this node.
+    # Action listed in modification are followed first, if no one is found then actionPlan is followed.
+    # If no leaf is reached, return the default value.
+    def utilityFromModifiedActionPlan(self, actionPlan, modification, default = None):
+        if(self.isLeaf()):
+            return self.utility
+        
+        id = self.information_set.id
+        
+        if(id in modification and modification[id] >= 0):
+            # As if actionPlan[id] was overwritten
+            return self.children[modification[id]].utilityFromModifiedActionPlan(actionPlan, modification, default)
+        if(id in modification and modification[id] < 0):
+            # As if actionPlan[id] was deleted
+            return default
+        if(id in actionPlan):
+            return self.children[actionPlan[id]].utilityFromModifiedActionPlan(actionPlan, modification, default)
+        
+        return default
+    
+    def computeReachability(self, actionPlan, pi):        
+        self.reachability = pi[self.player]
+        
+        if(self.isLeaf()):
+            return
+        
+        sampled_action = actionPlan[self.information_set.id]
+        
+        for a in range(len(self.children)):
+            if(sampled_action == a):
+                self.children[a].computeReachability(actionPlan, pi)
+            else:
+                old_pi = pi[self.player]
+                pi[self.player] = 0
+                self.children[a].computeReachability(actionPlan, pi)
+                pi[self.player] = old_pi
+
+class CFRChanceNode(CFRNode):
+    def __init__(self, base_node, parent = None):
+        CFRNode.__init__(self, base_node, parent)
+        self.distribution = base_node.distribution
+        
+    def isChance(self):
+        return True
+    
+    def sampleAction(self):        
+        r = random.random()
+        count = 0
+        
+        for i in range(len(self.distribution)):
+            count += self.distribution[i]
+            if(r < count):
+                return i
+            
+    def computeReachability(self, actionPlan, pi):
+        if(self.parent != None):
+            self.reachability = pi[self.parent.player]
+        else:
+            self.reachability = 1
+            
+        for a in range(len(self.children)):
+            self.children[a].computeReachability(actionPlan, pi)
+            
+    # Return the utility from the leaf reached following actionPlan and starting from this node.
+    # If no leaf is reached, return the default value.
+    def utilityFromActionPlan(self, actionPlan, default = None):
+        u = default
+        
+        for i in range(len(self.children)):
+            childUtility = self.children[i].utilityFromActionPlan(actionPlan, default)
+            
+            if(u == default):
+                u = childUtility.copy()
+                for p in range(len(childUtility)):
+                    u[p] *= self.distribution[i]
+            else:
+                for p in range(len(childUtility)):
+                    u[p] += childUtility[p] * self.distribution[i]
+            
+        return u
+    
+    # Return the utility from the leaf reached following a modification of actionPlan and starting from this node.
+    # Action listed in modification are followed first, if no one is found then actionPlan is followed.
+    # If no leaf is reached, return the default value.
+    def utilityFromModifiedActionPlan(self, actionPlan, modification, default = None):
+        u = default
+        
+        for i in range(len(self.children)):
+            childUtility = self.children[i].utilityFromActionPlan(actionPlan, default)
+            
+            if(u == default):
+                u = childUtility.copy()
+                for p in range(len(childUtility)):
+                    u[p] *= self.distribution[i]
+            else:
+                for p in range(len(childUtility)):
+                    u[p] += childUtility[p] * self.distribution[i]
+            
+        return u
+
+class CFRInformationSet:    
+    def __init__(self, id, player, action_count, sequence, cfr_tree):    
+        self.id = id
+        self.player = player
+        self.action_count = action_count
+        self.sequence = sequence
+        self.nodes = []
+        self.cfr_tree = cfr_tree
+        
+        self.cumulative_regret = [0 for a in range(self.action_count)]
+        self.cumulative_strategy = [0 for a in range(self.action_count)]
+        self.current_strategy = [1 / self.action_count for a in range(self.action_count)]
+        
+        # Uncomment to obtain random initial current_strategy
+        #self.current_strategy = [random.random() for a in range(self.action_count)]
+        #sum = reduce(lambda x, y: x + y, self.current_strategy, 0)
+        #self.current_strategy = [self.current_strategy[a] / sum for a in range(self.action_count)]
+        
+        self.cached_V = None
+        
+    def __str__(self):
+        return "<InfoSet" + str(self.id) + " - Player" + str(self.player) + ">"
+    
+    def __repr__(self):
+        return str(self)
+            
+    def addNode(self, node):
+        self.nodes.append(node)
+    
+    def updateCurrentStrategy(self):
+        sum = reduce(lambda x, y: x + max(0, y), self.cumulative_regret, 0)
+        
+        for a in range(0, self.action_count):
+            if(sum > 0):
+                self.current_strategy[a] = max(0, self.cumulative_regret[a]) / sum
+            else:
+                self.current_strategy[a] = 1 / self.action_count
+        
+    def getAverageStrategy(self):
+        norm = reduce(lambda x, y: x + y, self.cumulative_strategy)
+        if(norm > 0):
+            return [self.cumulative_strategy[a] / norm for a in range(self.action_count)]
+        else:
+            return [1 / self.action_count for a in range(self.action_count)]
+        
+    def sampleAction(self):
+        if(self.nodes[0].isChance()):
+            return self.nodes[0].sampleAction()
+        
+        r = random.random()
+        count = 0
+        
+        for i in range(len(self.current_strategy)):
+            count += self.current_strategy[i]
+            if(r < count):
+                return i
+    
+    def V(self, joint, db=False):
+        start_time = time.time()
+        if(self.cached_V != None):
+            return self.cached_V
+        
+        v = [0] * self.action_count
+        
+        this_player_infosets = self.cfr_tree.infosets_by_player[self.player]
+        
+        sequence = self.sequence.copy()
+        modification_sequence = self.sequence.copy()
+        
+        # Delete from actionPlan all the actions by the current player        
+        for iset in this_player_infosets:
+            if(iset.id not in sequence):
+                modification_sequence[iset.id] = -1
+        
+        for a in range(self.action_count):
+            sequence[self.id] = a
+            modification_sequence[self.id] = a
+            
+            #2sequence = {self.id: a}
+            #2sequence.update(self.sequence)
+            
+            children = list(filter(lambda iset: iset.sequence == sequence, this_player_infosets))
+            #2this_player_infosets = list(map(lambda i: i.id, filter(lambda i: i.player == self.player,\
+            #2                                              self.cfr_tree.information_sets.values())))
+            
+            if(True):#if(len(children) == 0):                
+                # "Leaves" part of the sum
+                # TODO: optimize this loop, it is too much to loop over all plans in the joint
+                for actionPlanString in joint.plans:
+                    actionPlan = CFRJointStrategy.stringToActionPlan(actionPlanString)                    
+                    frequency = joint.plans[actionPlanString] / joint.frequencyCount
+                    
+                    ########################################################################
+                    # Delete from actionPlan all the actions by the current player
+                    #for id in this_player_infosets:
+                    #    del actionPlan[id]
+                    
+                    #actionPlan.update(sequence)
+                    
+                    #u = self.cfr_tree.root.utilityFromActionPlan(actionPlan)
+                    ########################################################################
+                    
+                    ########################################################################
+                    # Delete from actionPlan all the actions by the current player
+                    #2for id in this_player_infosets:
+                    #2    if(id not in sequence):
+                    #2        sequence[id] = -1
+                        
+                    u = self.cfr_tree.root.utilityFromModifiedActionPlan(actionPlan, modification_sequence)
+                    ########################################################################
+                    
+                    if(u != None):
+                        if(db):
+                            print(u)
+                            print(frequency)
+                            print(v[a])
+                            print(frequency * u[self.player])
+                        v[a] += frequency * u[self.player]
+            
+            if(db):
+                print("Children via action " + str(a) + " = " + str(children))
+            
+            # "Recursive" part of the sum
+            for child in children:
+                v[a] += child.V(joint)
+                    
+        self.cached_V = max(v)
+        
+        return self.cached_V
+    
+    def getChildrenOfPlayer(self, player):        
+        children = set()
+        for node in self.nodes:
+            for child in node.children:
+                if(not child.isLeaf()):
+                    children.update(child.information_set.getChildrenOfPlayer(player))
+        if(self.player == player):
+            children.add(self)
+        return children
+
+class CFRJointStrategy:
+    def __init__(self, maxPlanCount):
+        self.maxPlanCount = maxPlanCount
+        self.frequencyCount = 0
+        self.plans = {}
+        
+        CFRJointStrategy.action_plans_cache = {}
+        
+    def addActionPlan(self, actionPlan):
+        string = CFRJointStrategy.actionPlanToString(actionPlan)
+        
+        if(string in self.plans):
+            self.plans[string] += 1
+            self.frequencyCount += 1
+        elif(self.maxPlanCount == 1 or len(self.plans) < self.maxPlanCount):
+            self.plans[string] = 1
+            self.frequencyCount += 1
+        else:
+            # Remove the least frequent plan
+            plan = min(self.plans, key = lambda p: self.plans[p])
+            self.frequencyCount -= self.plans[plan]
+            del self.plans[plan]
+            
+            # Add the new one
+            self.plans[string] = 1
+            self.frequencyCount += 1
+    
+    def actionPlanToString(actionPlan):
+        string = ""
+        
+        for infoset in actionPlan:
+            string += "a" + str(infoset) + "." + str(actionPlan[infoset])
+            
+        return string
+    
+    action_plans_cache = {}
+        
+    def stringToActionPlan(string):
+        if(string in CFRJointStrategy.action_plans_cache):
+            #return CFRJointStrategy.action_plans_cache[string].copy()
+            return CFRJointStrategy.action_plans_cache[string]
+        
+        actions = string.split("a")[1:]
+        actionPlan = {}
+        
+        for a in actions:
+            (infoset, action) = a.split(".")
+            actionPlan[int(infoset)] = int(action)
+            
+        CFRJointStrategy.action_plans_cache[string] = actionPlan
+        
+        #return actionPlan.copy()
+        return actionPlan
+    
+    # TODO: transform action plan into a reduced action plan (cut action at unreachable - by the player that
+    # owns them - information sets)
+    def reduceActionPlan(actionPlan, tree):
+        reducedActionPlan = {}
+        
+        tree.root.computeReachability(actionPlan, [1] * tree.numOfPlayers)
+        
+        for (id, iset) in tree.information_sets.items():
+            reachability = max(map(lambda n: n.reachability, iset.nodes))
+            if(reachability > 0):
+                reducedActionPlan[id] = actionPlan[id]
+            
+        return reducedActionPlan

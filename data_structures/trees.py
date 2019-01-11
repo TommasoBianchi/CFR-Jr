@@ -1,0 +1,221 @@
+import random
+from enum import Enum
+
+class Tree:
+    def __init__(self, numOfPlayers = 2, first_player = 0, root = None):
+        if(root == None):
+            root = Node(first_player, 0, 0)
+        self.root = root
+        self.node_count = 1
+        self.infoset_count = 1
+        self.numOfPlayers = numOfPlayers
+        
+    def addNode(self, player, information_set = -1, parent = None, probability = -1, actionName = None):
+        if(self.root == None):
+            print("ERROR: root should not be None")
+            return None
+        
+        if(information_set == -1):
+            information_set = self.infoset_count
+            self.infoset_count += 1
+        
+        if(parent == None):
+            parent = self.root
+        
+        node = Node(player, self.node_count, information_set, parent)
+        
+        if(parent.isChance()):
+            parent.addChild(node, probability, actionName)
+        else:
+            parent.addChild(node, actionName)
+        self.node_count += 1
+        
+        return node
+    
+    def addLeaf(self, parent, utility, actionName = None):
+        if(len(utility) != self.numOfPlayers):
+            print("ERROR: trying to create a leaf with a utility vector of the wrong size.")
+            return
+        
+        leaf = Leaf(self.node_count, utility, parent)
+        parent.addChild(leaf, actionName)
+        self.node_count += 1
+        return leaf
+    
+    def addChanceNode(self, parent = None, actionName = None):
+        if(self.root == None):
+            print("ERROR: root should not be None")
+            return None
+        
+        if(parent == None):
+            parent = self.root
+        
+        chanceNode = ChanceNode(self, node_count, parent, actionName)
+        parent.addChild(chanceNode)
+        self.node_count += 1
+        
+        return chanceNode
+    
+    def display(self):
+        print(self.root)
+        self.root.displayChildren()
+
+class Node:
+    def __init__(self, player, id, information_set, parent = None):
+        self.id = id
+        self.parent = parent
+        self.player = player
+        self.children = []
+        self.actionNames = []
+        #self.children_information_sets = []
+        #self.action_to_child_dict = {}
+        self.information_set = information_set
+        self.incoming_action = None
+        self.incoming_action_name = None
+        
+    def __str__(self):
+        return self.__repr__()
+    
+    def __repr__(self):
+        s = "Player " + str(self.player) +             " - Infoset " + str(self.information_set) +             " - Node " + str(self.id) 
+        if(self.parent != None):
+            s += " (children of Node" + str(self.parent.id) + " via Action " +                    str(self.incoming_action_name) + ")"
+        return s
+        
+    def addChild(self, child, actionName = None):
+        self.children.append(child)
+        child.parent = self
+        if(actionName == None):
+            actionName = str(self.information_set) + "." + str(len(self.children) - 1)
+        self.actionNames.append(actionName)
+        child.incoming_action = len(self.children) - 1
+        child.incoming_action_name = actionName
+        #self.action_to_child_dict[action] = child
+        #if(child.information_set not in self.children_information_sets):
+            #self.children_information_sets.append(child.information_set)
+            
+    def getChild(self, action):
+        return self.action_to_child_dict[action]
+        
+    def isLeaf(self):
+        return False
+    
+    def isChance(self):
+        return False
+    
+    def getSequence(self, player):
+        if(self.parent == None):
+            return {}
+        if(self.parent.player != player):
+            return self.parent.getSequence(player)
+        
+        sequence = self.parent.getSequence(player) 
+        sequence[self.parent.information_set] = self.incoming_action
+        return sequence
+    
+    def displayChildren(self):
+        for child in self.children:
+            print(child)
+        for child in self.children:
+            child.displayChildren()
+            
+    def getActionLeadingToNode(self, targetNode):
+        if(targetNode.parent == None):
+            return None
+        if(targetNode.parent == self):
+            return targetNode.incoming_action
+        return self.getActionLeadingToNode(targetNode.parent)
+
+class Leaf(Node):
+    def __init__(self, id, utility, parent):
+        Node.__init__(self, -1, id, -1 , parent)
+        self.utility = utility
+        
+    def __repr__(self):
+        s = "Leaf" + str(self.id) 
+        if(self.parent != None):
+            s += " (children of Node" + str(self.parent.id) + " via Action " +                    str(self.parent.information_set) + "." + str(self.incoming_action) + ") - " +                    " utility is " + str(self.utility)
+        return s
+    
+    def isLeaf(self):
+        return True
+
+class ChanceNode(Node):
+    def __init__(self, id, parent = None):
+        Node.__init__(self, -42, id, -42, parent)
+        self.distribution = []
+    
+    def isChance(self):
+        return True
+    
+    def addChild(self, child, probability, actionName = None):
+        self.children.append(child)
+        self.distribution.append(probability)
+        child.parent = self
+        child.incoming_action = len(self.children) - 1
+        if(actionName == None):
+            actionName = "c." + str(len(self.children) - 1)
+        self.actionNames.append(actionName)
+        
+        
+
+class PlayerSwapMethod(Enum):
+    Random = 0
+    RoundRobin = 1
+    RandomWithoutSame = 2
+
+def randomTree(depth, branching_factor = 2, info_set_probability = 1, player_count = 2,
+               first_player = -1, min_utility = 0, max_utility = 100, swap_method = PlayerSwapMethod.RoundRobin):
+    
+    # Player swap subroutine
+    def swapPlayers(current_player, player_count, swap_method):
+        if(swap_method == PlayerSwapMethod.RoundRobin):
+            return (current_player + 1) % player_count
+        if(swap_method == PlayerSwapMethod.Random):
+            return random.randint(0, player_count - 1)
+        if(swap_method == PlayerSwapMethod.RandomWithoutSame):
+            p = random.randint(0, player_count - 2)
+            if(p >= current_player):
+                p += 1
+            return p
+    
+    # Randomly choose first player if it is not already set
+    if(first_player < 0 or first_player >= player_count):    
+        player = random.randint(0, player_count - 1)
+    else:
+        player = first_player
+        
+    # Initialize the tree
+    tree = Tree(player_count, player)
+    nodes_to_expand = [ tree.root ]
+    information_set = 0
+    
+    for d in range(0, depth - 1):
+        # Change player
+        player = swapPlayers(player, player_count, swap_method)
+        
+        new_nodes_to_expand = []
+        for parent in nodes_to_expand:
+            # Change information set (children of different nodes always are in different information sets)
+            # -- because of perfect recall
+            information_set += 1
+            #infoset_actions = range(parent.information_set * branching_factor,
+             #                       (parent.information_set + 1) * branching_factor)
+                
+            # Generate a new node for each action
+            for a in range(branching_factor):
+                node = tree.addNode(player, information_set, parent)
+                if(a != branching_factor - 1 and random.random() <= info_set_probability):
+                    information_set += 1
+                
+                new_nodes_to_expand.append(node)
+                
+        nodes_to_expand = new_nodes_to_expand
+        
+    # Nodes in nodes_to_expand have only leaves as children at this point
+    for node in nodes_to_expand:
+        for a in range(branching_factor):
+            utility = [random.randint(min_utility, max_utility) for p in range(player_count)]
+            tree.addLeaf(node, utility)
+        
+    return tree
