@@ -2,7 +2,16 @@ import random
 from enum import Enum
 
 class Tree:
+    """
+    Tree representation of an extensive-form game.
+    Supports an arbitrary number of players, including chance.
+    """
+
     def __init__(self, numOfPlayers = 2, first_player = 0, root = None):
+        """
+        Create a tree with a specified root node (or with a new node as root if None is given)
+        """
+
         if(root == None):
             root = Node(first_player, 0, 0)
         self.root = root
@@ -11,6 +20,14 @@ class Tree:
         self.numOfPlayers = numOfPlayers
         
     def addNode(self, player, information_set = -1, parent = None, probability = -1, actionName = None):
+        """
+        Add a decision node for a given player to the tree.
+        If no information set is given, a new unique id is generated.
+        If no parent is given, the parent is set to be the root.
+        If the node is a children of a chance node, the probability to play the action leading to this node must be given.
+        If no action name is given, a default string is generated.
+        """
+
         if(self.root == None):
             print("ERROR: root should not be None")
             return None
@@ -33,6 +50,11 @@ class Tree:
         return node
     
     def addLeaf(self, parent, utility, actionName = None):
+        """
+        Add a leaf node with a given utility to the tree.
+        If no action name is given, a default string is generated.
+        """
+
         if(len(utility) != self.numOfPlayers):
             print("ERROR: trying to create a leaf with a utility vector of the wrong size.")
             return
@@ -43,6 +65,12 @@ class Tree:
         return leaf
     
     def addChanceNode(self, parent = None, actionName = None):
+        """
+        Add a chance node to the tree.
+        If no parent is given, the parent is set to be the root.
+        If no action name is given, a default string is generated.
+        """
+
         if(self.root == None):
             print("ERROR: root should not be None")
             return None
@@ -61,14 +89,20 @@ class Tree:
         self.root.displayChildren()
 
 class Node:
+    """
+    Represents a decision node for a given player in an extensive-form tree.
+    """
+
     def __init__(self, player, id, information_set, parent = None):
+        """
+        Create a decision node for a given player, with a given id and a given information set.
+        """
+
         self.id = id
         self.parent = parent
         self.player = player
         self.children = []
         self.actionNames = []
-        #self.children_information_sets = []
-        #self.action_to_child_dict = {}
         self.information_set = information_set
         self.incoming_action = None
         self.incoming_action_name = None
@@ -83,6 +117,11 @@ class Node:
         return s
         
     def addChild(self, child, actionName = None):
+        """
+        Add a child node.
+        If no action name is passed, a default one is generated.
+        """
+
         self.children.append(child)
         child.parent = self
         if(actionName == None):
@@ -90,9 +129,6 @@ class Node:
         self.actionNames.append(actionName)
         child.incoming_action = len(self.children) - 1
         child.incoming_action_name = actionName
-        #self.action_to_child_dict[action] = child
-        #if(child.information_set not in self.children_information_sets):
-            #self.children_information_sets.append(child.information_set)
             
     def getChild(self, action):
         return self.action_to_child_dict[action]
@@ -104,6 +140,10 @@ class Node:
         return False
     
     def getSequence(self, player):
+        """
+        Returns the sequence of actions (for a given player) that leads to this node.
+        """
+
         if(self.parent == None):
             return {}
         if(self.parent.player != player):
@@ -120,6 +160,10 @@ class Node:
             child.displayChildren()
             
     def getActionLeadingToNode(self, targetNode):
+        """
+        Returns the action (of this node) in the path from this node to the target node.
+        """
+
         if(targetNode.parent == None):
             return None
         if(targetNode.parent == self):
@@ -127,6 +171,10 @@ class Node:
         return self.getActionLeadingToNode(targetNode.parent)
 
 class Leaf(Node):
+    """
+    Represents a leaf node in an extensive-form tree.
+    """
+
     def __init__(self, id, utility, parent):
         Node.__init__(self, -1, id, -1 , parent)
         self.utility = utility
@@ -141,6 +189,10 @@ class Leaf(Node):
         return True
 
 class ChanceNode(Node):
+    """
+    Represents a chance node in an extensive-form tree.
+    """
+
     def __init__(self, id, parent = None):
         Node.__init__(self, -42, id, -42, parent)
         self.distribution = []
@@ -149,6 +201,11 @@ class ChanceNode(Node):
         return True
     
     def addChild(self, child, probability, actionName = None):
+        """
+        Add a child node, that is reached by a given (fixed) probability.
+        If no action name is passed, a default one is generated.
+        """
+
         self.children.append(child)
         self.distribution.append(probability)
         child.parent = self
@@ -157,7 +214,7 @@ class ChanceNode(Node):
             actionName = "c." + str(len(self.children) - 1)
         self.actionNames.append(actionName)
         
-        
+# --------------------------------------------------------------------------------
 
 class PlayerSwapMethod(Enum):
     Random = 0
@@ -165,7 +222,19 @@ class PlayerSwapMethod(Enum):
     RandomWithoutSame = 2
 
 def randomTree(depth, branching_factor = 2, info_set_probability = 1, player_count = 2,
-               first_player = -1, min_utility = 0, max_utility = 100, swap_method = PlayerSwapMethod.RoundRobin):
+               first_player = -1, min_utility = 0, max_utility = 100, int_utility = True, swap_method = PlayerSwapMethod.RoundRobin):
+    """
+    Create a random extensive-form tree.
+    depth = the depth of the tree.
+    branching_factor = how many actions each node has.
+    info_set_probability = the probability that a newly added node will be added to an already existing information set.
+    player_count = the number of players.
+    first_player = the first player to play (if no one is given, it is chosen randomly).
+    min_utility = the minimum utility achievable by each player.
+    max_utility = the maximum utility achievable by each player.
+    int_utility = wether the utility is a random integer or not.
+    swap_method = how to alternate players during the game (either round robin or random).
+    """
     
     # Player swap subroutine
     def swapPlayers(current_player, player_count, swap_method):
@@ -199,8 +268,6 @@ def randomTree(depth, branching_factor = 2, info_set_probability = 1, player_cou
             # Change information set (children of different nodes always are in different information sets)
             # -- because of perfect recall
             information_set += 1
-            #infoset_actions = range(parent.information_set * branching_factor,
-             #                       (parent.information_set + 1) * branching_factor)
                 
             # Generate a new node for each action
             for a in range(branching_factor):
@@ -215,7 +282,10 @@ def randomTree(depth, branching_factor = 2, info_set_probability = 1, player_cou
     # Nodes in nodes_to_expand have only leaves as children at this point
     for node in nodes_to_expand:
         for a in range(branching_factor):
-            utility = [random.randint(min_utility, max_utility) for p in range(player_count)]
+            if(int_utility):
+                utility = [random.randint(min_utility, max_utility) for p in range(player_count)]
+            else:
+                utility = [random.uniform(min_utility, max_utility) for p in range(player_count)]
             tree.addLeaf(node, utility)
         
     return tree
