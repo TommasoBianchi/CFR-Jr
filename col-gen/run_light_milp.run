@@ -1,0 +1,164 @@
+option display_precision 0;
+
+param flag_do_expand default 0;
+param flag_print_sol default 0;
+param flag_print_duals default 0;
+param flag_print_givens default 0;
+
+let {q1 in Q1, q2 in Q2} suppU[q1,q2] := if U1[q1,q2] <> 0 or U2[q1,q2] <> 0 then 1 else 0;
+
+display sum{q1 in Q1, q2 in Q2} U1[q1,q2];
+display sum{q1 in Q1, q2 in Q2} U2[q1,q2];
+display sum{q1 in Q1, q2 in Q2} U1[q1,q2]*U2[q1,q2];
+display sum{q1 in Q1, q2 in Q2} suppU[q1,q2];
+
+option solver gurobi;
+
+# option gurobi_options 'timelim 100';
+
+# option solver_msg 0; # turn off solver messages
+
+# option gurobi_options "quad=1 feastol=1e-09";
+
+option gurobi_options "outlev=1";
+
+problem master_phase1: aux_c11, aux_c12, aux_c3, slack_c21, slack_c22, sigma, v1, v2, aux_obj, c11_phase1, c12_phase1, c21_phase1, c22_phase1, c3_phase1, sigma, v1, v2, aux_c11, aux_c12, slack_c21, slack_c22, aux_c3;
+problem master: sigma, v1, v2, welfare, c11, c12, c21, c22, c3, sigma, v1, v2;
+
+# PRICERS with binary variables over terminal nodes (model.mod)
+# NB: only for 2-player games
+#problem pricer: z, rp1_pricer, rp2_pricer, obj_pricer_milp, const1_milp_sf1, const2_milp_sf2, const3_milp, const4_milp, const5_milp;
+#problem pricer_aux: z, rp1_pricer, rp2_pricer, obj_pricer_milp_aux, const1_milp_sf1, const2_milp_sf2, const3_milp, const4_milp, const5_milp;
+
+# PRICERS with binary realization plans (model_simple.mod)
+# NB: working both for 2-player games and games with 2-player + Nature
+# problem pricer: rp1_pricer, rp2_pricer, obj_pricer_milp, const1_milp_sf1, const2_milp_sf2;
+# problem pricer_aux:  rp1_pricer, rp2_pricer, obj_pricer_milp_aux, const1_milp_sf1, const2_milp_sf2, const1_milp_sf1_RLT, const2_milp_sf2_RLT, z_def1, z_def2, z_def3, z_lb;
+
+problem pricer: rp1_pricer, rp2_pricer, obj_pricer_milp, const1_milp_sf1, const2_milp_sf2;
+problem pricer_aux:  rp1_pricer, rp2_pricer, obj_pricer_milp_aux, const1_milp_sf1, const2_milp_sf2;
+
+
+
+param OPTIMAL default 0;
+param FOUND;
+param it default 0;
+param ph default 0; #0 for phase I (auxiliary problem), 1 for phase II
+
+param best_rp1{Q1};
+param best_rp2{Q2};
+param best_violation;
+
+param it_ph1 default 0;
+
+repeat {
+    let it := it + 1;
+
+    printf "*********Iteration %d\n", it;
+
+    printf "********(Ph=%s,it=%d)*********Solving master\n", ph, it;
+    if ph == 0 then
+        solve master_phase1;
+    else solve master;
+    if flag_do_expand == 1 then expand;
+
+    if flag_print_sol == 1 then{
+      print "Printing phase I master solution";
+      if ph == 0 then display aux_c11, aux_c12, slack_c21, slack_c22, aux_c3, v1, v2, sigma;
+      else display v1, v2, sigma;
+    }
+
+    printf "********(Ph=%s,it=%d)*********Deriving dual variables\n", ph, it;
+    if ph == 0 then {
+      let alpha1 := c11_phase1.dual;
+      let alpha2 := c12_phase1.dual;
+      let{q1 in Q1} beta1[q1] := c21_phase1[q1].dual;
+      let{q2 in Q2} beta2[q2] := c22_phase1[q2].dual;
+      let gamma := c3_phase1.dual;
+    } else {
+      let alpha1 := c11.dual;
+      let alpha2 := c12.dual;
+      let{q1 in Q1} beta1[q1] := c21[q1].dual;
+      let{q2 in Q2} beta2[q2] := c22[q2].dual;
+      let gamma := c3.dual;
+    }
+
+    if flag_print_duals == 1 then {
+        print "Printing phase I master dual vars";
+        display alpha1, alpha2, beta1, beta2, gamma;
+    }
+
+    let best_violation := -1;
+    printf "********(Ph=%s,it=%d)*********Solving pricer\n", ph, it;
+
+    if ph == 0 then{
+      solve pricer_aux;
+    }else{
+      solve pricer;
+    }
+    if flag_do_expand == 1 then expand;
+
+    if ph == 0 then{
+      let best_violation :=  obj_pricer_milp_aux + gamma;
+    }
+    else{
+      # let best_violation :=  - obj_pricer_milp - gamma;
+      let best_violation :=  obj_pricer_milp + gamma;
+    }
+    printf"********(Ph=%s,it=%d)********* Pricer solved, biggest violation=%f\n",ph,it,best_violation;
+    /* printf"Presolve Deduced bounds on z: zlb, z.ub\n";
+    for {qq1 in Q1, qq2 in Q2} printf "%f, %f\n", z[qq1,qq2].lb, z[qq1,qq2].ub; */
+
+    let {qq1 in Q1} best_rp1[qq1] := rp1_pricer[qq1];
+    let {qq2 in Q2} best_rp2[qq2] := rp2_pricer[qq2];
+
+    if flag_print_sol == 1 then {
+      display best_rp1, best_rp2;
+    }
+
+    let OPTIMAL := 1;
+
+    if (best_violation > 1e-06 ) then { #a cut-off is needed for numerical reasons
+      printf "********(Ph=%s,it=%d)*********Violated inequality found\n", ph, it;
+
+      if flag_print_sol == 1 then {
+	       printf "best_rp1 = ("; for {qq1 in Q1} if best_rp1[qq1] <> 0 then printf"%s ", qq1; printf") "; printf "best_rp2 = ("; for {qq2 in Q2} if best_rp2[qq2] <> 0 then printf"%s ", qq2; printf")\n";
+      }
+
+           let p1_num := p1_num+1;
+           let p2_num := p2_num+1;
+           let{qq1 in Q1} rp1[p1_num,qq1] := best_rp1[qq1];
+           let{qq2 in Q2} rp2[p2_num,qq2] := best_rp2[qq2];
+           let P1P2 := P1P2 union {(p1_num,p2_num)};
+
+           let OPTIMAL := 0;
+    }
+
+    /* printf "********* Piani Pl 1\n";
+    for {(p1,p2) in P1P2, qq1 in Q1} printf "%d, %s, %d\n", p1, qq1, rp1[p1,qq1];
+    printf "********* Piani Pl 2\n";
+    for {(p1,p2) in P1P2, qq2 in Q2} printf "%d, %s, %d\n", p2, qq2, rp2[p2,qq2]; */
+
+    if ph == 0 then
+       printf "aux_obj=%f\n", aux_obj;
+    else
+       printf "welfare=%f\n", welfare;
+
+    printf "********(Ph=%s,it=%d)*********Checking phase termination condition \n", ph, it;
+    if OPTIMAL == 1 and ph == 0 then {
+	     let ph := 1;
+	     let it_ph1 := it;
+       # restart iteration count
+       let it := 0;
+	     let OPTIMAL := 0;
+       if aux_obj > 1e-06 then {
+	    printf "aux_obj = %f: Phase II problem *apparenty* infeasible; halting\n", aux_obj;
+	    break;
+        }
+    }
+    printf "\n";
+} while OPTIMAL <> 1;
+
+printf "LOG: feas=%s opt=%s ph1_it=%d ph2_it=%d time=%f welfare=%f\n", if aux_obj > 1e-09 then 0 else 1, OPTIMAL, it_ph1, it, _ampl_time, welfare;
+
+printf "%d,%d,%d,%d,%d,%d,%f,%f\n", card(Q1), card(Q2), card(H1), card(H2),it_ph1, it-it_ph1, _ampl_time,welfare;
