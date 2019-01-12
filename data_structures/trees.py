@@ -170,6 +170,23 @@ class Node:
             return targetNode.incoming_action
         return self.getActionLeadingToNode(targetNode.parent)
 
+    def getNodeFollowJointSequence(self, joint_sequence):
+        """
+        Returns the leaf reached when following the given joint sequence.
+        """
+
+        if(self.isLeaf()):
+            return self
+        
+        sequence = joint_sequence[self.player]
+
+        if(self.information_set not in sequence):
+            return self
+
+        action = sequence[self.information_set]
+        
+        return self.children[action].getNodeFollowJointSequence(joint_sequence)
+
 class Leaf(Node):
     """
     Represents a leaf node in an extensive-form tree.
