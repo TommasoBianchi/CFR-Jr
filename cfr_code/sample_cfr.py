@@ -56,7 +56,7 @@ def sampleCFR(node, player, pi, action_plan):
     return v
 
 def SolveWithSampleCFR(cfr_tree, iterations, perc = 10, show_perc = False, checkEveryIteration = -1,
-                      bound_joint_size = True):
+                       bootstrap_iterations = 0, bound_joint_size = True):
     """
     Find a NFCCE in a given extensive-form tree with the SCFR algorithm, run for a given amount of iterations.
     If show_perc is True, every perc% of the target iterations are done a message is shown on the console.
@@ -76,9 +76,11 @@ def SolveWithSampleCFR(cfr_tree, iterations, perc = 10, show_perc = False, check
 
     start_time = time.time()
     
-    for i in range(1, iterations+1):
-        if(show_perc and (i+1) % (iterations / 100 * perc) == 0):
-            print(str((i+1) / (iterations / 100 * perc) * perc) + "%")
+    for i in range(1, iterations+bootstrap_iterations+1):
+        t = i - bootstrap_iterations
+
+        if((t+1) > 0 and show_perc and (t+1) % (iterations / 100 * perc) == 0):
+            print(str((t+1) / (iterations / 100 * perc) * perc) + "%")
             
         # Sample a joint action plan from the current strategies
         action_plan = cfr_tree.sampleActionPlan()
@@ -91,14 +93,17 @@ def SolveWithSampleCFR(cfr_tree, iterations, perc = 10, show_perc = False, check
         for infoset in cfr_tree.information_sets.values():
             infoset.updateCurrentStrategy()
             
+        if(i <= bootstrap_iterations):
+            continue # Neither update the joint, nor check the equilibrium
+
         jointStrategy.addActionPlan(CFRJointStrategy.reduceActionPlan(action_plan, cfr_tree))
         
-        if(checkEveryIteration > 0 and i % checkEveryIteration == 0):
+        if(checkEveryIteration > 0 and t % checkEveryIteration == 0):
             data = {'epsilon': cfr_tree.checkEquilibrium(jointStrategy),
                     'absolute_joint_size': jointStrategy.frequencyCount,
-                    'relative_joint_size': jointStrategy.frequencyCount / (i + 1),
+                    'relative_joint_size': jointStrategy.frequencyCount / t,
                     'max_plan_frequency': max(jointStrategy.plans.values()),
-                    'iteration_number': i,
+                    'iteration_number': t,
                     'duration': time.time() - start_time}
             graph_data.append(data)
             start_time = time.time()

@@ -41,7 +41,7 @@ class CFRTree:
             
             if(iset_id in self.information_sets):
                 node.information_set = self.information_sets[iset_id]
-                iset.addNode(node)
+                node.information_set.addNode(node)
             else:
                 iset = CFRInformationSet(iset_id, node.player, len(node.children), node.base_node.getSequence(node.player), self)
                 iset.addNode(node)
@@ -298,7 +298,7 @@ class CFRChanceNode(CFRNode):
         u = default
         
         for i in range(len(self.children)):
-            childUtility = self.children[i].utilityFromActionPlan(actionPlan, default)
+            childUtility = self.children[i].utilityFromModifiedActionPlan(actionPlan, modification, default)
             
             if(u == default):
                 u = childUtility.copy()
@@ -425,7 +425,8 @@ class CFRInformationSet:
                 actionPlan = CFRJointStrategy.stringToActionPlan(actionPlanString)                    
                 frequency = joint.plans[actionPlanString] / joint.frequencyCount
 
-                u = self.cfr_tree.root.utilityFromModifiedActionPlan(actionPlan, modification_sequence)
+                u = self.cfr_tree.root.utilityFromModifiedActionPlan(actionPlan, modification_sequence, 
+                                                                     default = [0] * self.cfr_tree.numOfPlayers)
                 
                 if(u != None):
                     if(db):
