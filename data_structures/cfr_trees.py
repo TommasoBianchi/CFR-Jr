@@ -488,7 +488,7 @@ class CFRJointStrategy:
         if(string in self.plans):
             self.plans[string] += 1
             self.frequencyCount += 1
-        elif(self.maxPlanCount == 1 or len(self.plans) < self.maxPlanCount):
+        elif(self.maxPlanCount == -1 or len(self.plans) < self.maxPlanCount):
             self.plans[string] = 1
             self.frequencyCount += 1
         else:
