@@ -5,7 +5,7 @@ from data_structures.cfr_trees import CFRTree
 def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
     """
     Given a tree, build a string representing a dat file for the colgen algorithm ampl implementation.
-    If compressSequenceNames is True, all sequences are replaced by unique ids (to save disk space); otherwise, 
+    If compressSequenceNames is True, all sequences are replaced by unique ids (to save disk space); otherwise,
     sequences are generated as a string containing all the id of the information sets and relative actions.
     """
 
@@ -33,14 +33,14 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
             sequence_string_to_id[string] = max_sequence_id
             max_sequence_id += 1
             return str(max_sequence_id - 1)
-    
+
     all_nodes = reduce(lambda x, y: x + y.nodes, cfr_tree.information_sets.values(), [])
     all_leaves = list(filter(lambda n: n.isLeaf(), reduce(lambda x, y: x + y.children, all_nodes, [])))
     all_nodes = all_nodes + all_leaves
     all_joint_sequences = [()]
-    
+
     for p in range(cfr_tree.numOfPlayers):
-        
+
         # --------------------------
         # Print sequences
         # --------------------------
@@ -64,7 +64,7 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
         s += "#|H" + str(p) + "| = " + str(len(H) + 1) + "\n\n"
 
         s += "set H" + str(p) + " = empty_is_" + str(p) + " " + reduce(lambda x, y: x + " " + str(y.id), H, "") + ";\n\n"
-    
+
         # --------------------------
         # Print F matrix and f vector
         # --------------------------
@@ -104,10 +104,10 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
     for player in range(cfr_tree.numOfPlayers):
         s += "param U" + str(player) + ":\n"
         for js in all_joint_sequences:
-            node = root.base_node.getNodeFollowJointSequence(js)
+            expected_utility = root.utilityFromJointSequence(js)
             for p in range(cfr_tree.numOfPlayers):
                 s += sequence_to_string(js[p], p) + " "
-            s += str(node.utility[player] if node.isLeaf() else 0) + "\n"
+            s += str(expected_utility[player]) + "\n"
         s += ";\n\n"
 
     return s
