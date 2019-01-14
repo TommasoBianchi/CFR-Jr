@@ -244,6 +244,23 @@ class CFRNode:
                 self.children[a].computeReachability(actionPlan, pi)
                 pi[self.player] = old_pi
 
+
+
+    def isActionPlanLeadingToInfoset(self, actionPlan, targetInfoset):
+        """
+        Returns true if the path obtained by the given action plan leads to the target information set.
+        """
+
+        if(self.information_set == targetInfoset):
+            return True
+
+        action = actionPlan[self.information_set.id]
+
+        if(self.children[action].isLeaf()):
+            return False
+        else:
+            return self.children[action].isActionPlanLeadingToInfoset(actionPlan, targetInfoset)
+
 class CFRChanceNode(CFRNode):
     """
     Wrapper around an extensive-form chance node for holding additional CFR-related code and data.
@@ -339,6 +356,16 @@ class CFRChanceNode(CFRNode):
                     u[p] += childUtility[p] * self.distribution[i]
 
         return u
+
+    def isActionPlanLeadingToInfoset(self, actionPlan, targetInfoset):
+        """
+        Returns true if the path obtained by the given action plan leads to the target information set.
+        """
+
+        res = False
+        for child in self.children:
+            res = res or child.isActionPlanLeadingToInfoset(actionPlan, targetInfoset)
+        return res
 
 class CFRInformationSet:
     """
@@ -453,21 +480,17 @@ class CFRInformationSet:
             # TODO: optimize this loop, it is too much to loop over all plans in the joint
             for actionPlanString in joint.plans:
                 actionPlan = CFRJointStrategy.stringToActionPlan(actionPlanString)
+
+                if(not self.cfr_tree.root.isActionPlanLeadingToInfoset(actionPlan, self)):
+                    continue
+
                 frequency = joint.plans[actionPlanString] / joint.frequencyCount
 
                 u = self.cfr_tree.root.utilityFromModifiedActionPlan(actionPlan, modification_sequence,
                                                                      default = [0] * self.cfr_tree.numOfPlayers)
 
                 if(u != None):
-                    if(db):
-                        print(u)
-                        print(frequency)
-                        print(v[a])
-                        print(frequency * u[self.player])
                     v[a] += frequency * u[self.player]
-
-            if(db):
-                print("Children via action " + str(a) + " = " + str(children))
 
             # "Recursive" part of the sum
             for child in children:
