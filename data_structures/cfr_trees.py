@@ -188,6 +188,8 @@ class CFRNode:
         Return the expected utility when players follow the joint sequence 'js'. (Chance's actions are not considered in 'js')
         """
         if(self.isLeaf()):
+            if self.utility[0] == -1 and self.id==54:
+                print("---"+str(self.id)+"----"+str(js)+"---"+str(self.utility))
             return self.utility
         elif(self.information_set.id not in js[self.player]):
             return tuple(0 for p in js)
@@ -198,6 +200,27 @@ class CFRNode:
 
             return self.children[new_action].utilityFromJointSequence(js)
 
+    def find_terminals(self, terminals):
+        if(self.isLeaf()):
+            terminals.add(self)
+        else:
+            for child in self.children:
+                child.find_terminals(terminals)
+
+    def reachableTerminals(self, js):
+        """
+        returns the set of leaves reachable with the given joint sequences
+        """
+        if(self.isLeaf()):
+            return {self.id}
+        elif(self.information_set.id in js[self.player]):
+            cur_player = self.player
+            cur_infoset = self.information_set.id
+            new_action = js[cur_player][cur_infoset]
+
+            return self.children[new_action].reachableTerminals(js)
+
+        return set()
 
     def utilityFromModifiedActionPlan(self, actionPlan, modification, default = None):
         """
@@ -316,6 +339,20 @@ class CFRChanceNode(CFRNode):
                 expected_utility[p] += observed_utility[p] * self.distribution[child_id]
 
         return tuple(expected_utility)
+
+    def find_terminals(self, terminals):
+        for child_id in range(len(self.children)):
+            self.children[child_id].find_terminals(terminals)
+
+    def reachableTerminals(self, js):
+        """
+        returns the set of reachable terminals given the joint sequence 'js'.
+        At chance nodes, we perform the union of terminals reachable through each of the chance moves
+        """
+        cum=set()
+        for child in self.children:
+            cum = cum.union(child.reachableTerminals(js))
+        return cum
 
 
     def utilityFromModifiedActionPlan(self, actionPlan, modification, default = None):
