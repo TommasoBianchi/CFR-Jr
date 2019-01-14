@@ -188,8 +188,6 @@ class CFRNode:
         Return the expected utility when players follow the joint sequence 'js'. (Chance's actions are not considered in 'js')
         """
         if(self.isLeaf()):
-            if self.utility[0] == -1 and self.id==54:
-                print("---"+str(self.id)+"----"+str(js)+"---"+str(self.utility))
             return self.utility
         elif(self.information_set.id not in js[self.player]):
             return tuple(0 for p in js)
