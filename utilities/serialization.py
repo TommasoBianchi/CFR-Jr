@@ -17,8 +17,9 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
 
     max_sequence_id = 0
     sequence_string_to_id = {}
+
     def sequence_to_string(sequence, player):
-        if(sequence == {}):
+        if(len(sequence) == 0):
             string = "empty_seq_" + str(player)
         else:
             string = reduce(lambda x, y: x + y, map(lambda seq: 'a' + str(seq[0]) + "." + str(seq[1]), sequence.items()))
@@ -39,6 +40,8 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
     all_nodes = all_nodes + all_leaves
     all_joint_sequences = [()]
 
+    Q_holder = []
+
     for p in range(cfr_tree.numOfPlayers):
 
         # --------------------------
@@ -48,6 +51,7 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
 
         # Remove duplicates
         Q = [{}] + [dict(t) for t in {tuple(d.items()) for d in Q_raw}]
+        Q_holder.append(Q)
 
         s += "#|Q" + str(p) + "| = " + str(len(Q)) + "\n\n"
 
@@ -96,18 +100,44 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
             s += str(h.id) + " 0\n"
         s += ";\n\n"
 
-        all_joint_sequences = [js + (q,) for js in all_joint_sequences for q in Q + [{}]]
 
-        # --------------------------
-        # Print utilities
-        # --------------------------
+        # all_joint_sequences = [js + (q,) for js in all_joint_sequences for q in Q ]
+    all_joint_sequences=[]
+
+    for seq0 in Q_holder[0]:
+        for seq1 in Q_holder[1]:
+            for seq2 in Q_holder[2]:
+                all_joint_sequences.append((seq0, seq1, seq2))
+
+    def __js_len(js):
+        len_js = 0
+        for p in range(len(js)):
+            len_js += len(js[p])
+        return len_js
+
+
+    minimal_sequences = {}
+    for js in all_joint_sequences:
+        terminals = root.reachableTerminals(js)
+        len_js = __js_len(js)
+        for terminal in terminals:
+            if terminal not in minimal_sequences:
+                minimal_sequences[terminal] = js
+            else:
+                if(len_js < __js_len(minimal_sequences[terminal])):
+                    minimal_sequences[terminal] = js
+
+    # --------------------------
+    # Print utilities
+    # --------------------------
     for player in range(cfr_tree.numOfPlayers):
-        s += "param U" + str(player) + ":\n"
-        for js in all_joint_sequences:
+        s += "param U" + str(player) + " default 0 :=\n"
+        for js in minimal_sequences.values():
             expected_utility = root.utilityFromJointSequence(js)
             for p in range(cfr_tree.numOfPlayers):
                 s += sequence_to_string(js[p], p) + " "
             s += str(expected_utility[player]) + "\n"
         s += ";\n\n"
+
 
     return s
