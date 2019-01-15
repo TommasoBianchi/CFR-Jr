@@ -8,6 +8,25 @@ from cfr_code.sample_cfr import SolveWithSampleCFR
 import time
 import json
 
+log_file_name = "results/" + str(int(time.time())) + "log.log"
+
+log = open(log_file_name, "a")
+
+# ----------------------------------------
+# Install handler to detect crashes
+# ----------------------------------------
+import sys
+import logging
+import traceback
+
+def log_except_hook(*exc_info):
+    text = "".join(traceback.format_exception(*exc_info))
+    logging.error("Unhandled exception: %s", text)
+    log.write("\n\n------Unhandled exception:------\n\n" + text)
+
+sys.excepthook = log_except_hook
+# ----------------------------------------
+
 kuhn_parameters = []
 
 for players in range(2, 4):
@@ -48,10 +67,6 @@ for players in range(2, 4):
 				"check_every_iteration": 10000,
 				"bound_joint_size": False
 			})
-
-log_file_name = "results/" + str(int(time.time())) + "log.log"
-
-log = open(log_file_name, "a")
 
 for p in kuhn_parameters:
 	kuhn_tree = build_kuhn_tree(p["num_players"], p["rank"])
