@@ -1,3 +1,7 @@
+# load .mod and .dat
+model model_3_pl_ch.mod;
+data prova.dat;
+
 # digits of precision to which displayed numbers are rounded;full precision=0
 option display_precision 0;
 

@@ -38,7 +38,6 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
     all_nodes = reduce(lambda x, y: x + y.nodes, cfr_tree.information_sets.values(), [])
     all_leaves = list(filter(lambda n: n.isLeaf(), reduce(lambda x, y: x + y.children, all_nodes, [])))
     all_nodes = all_nodes + all_leaves
-    all_joint_sequences = [()]
 
     Q_holder = []
 
@@ -53,9 +52,9 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
         Q = [{}] + [dict(t) for t in {tuple(d.items()) for d in Q_raw}]
         Q_holder.append(Q)
 
-        s += "#|Q" + str(p) + "| = " + str(len(Q)) + "\n\n"
+        s += "#|Q" + str(p+1) + "| = " + str(len(Q)) + "\n\n"
 
-        s += "set Q" + str(p) + " ="
+        s += "set Q" + str(p+1) + " ="
         for q in Q:
             s += " " + sequence_to_string(q, p)
         s += ";\n\n"
@@ -65,18 +64,18 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
         # --------------------------
         H = cfr_tree.infosets_by_player[p]
 
-        s += "#|H" + str(p) + "| = " + str(len(H) + 1) + "\n\n"
+        s += "#|H" + str(p+1) + "| = " + str(len(H) + 1) + "\n\n"
 
-        s += "set H" + str(p) + " = empty_is_" + str(p) + " " + reduce(lambda x, y: x + " " + str(y.id), H, "") + ";\n\n"
+        s += "set H" + str(p+1) + " = empty_is_" + str(p+1) + " " + reduce(lambda x, y: x + " " + str(y.id), H, "") + ";\n\n"
 
         # --------------------------
         # Print F matrix and f vector
         # --------------------------
-        s += "param F" + str(p) + ":\n"
+        s += "param F" + str(p+1) + ":\n"
 
         for q in Q:
             s += sequence_to_string(q, p) + " "
-        s += ":=\nempty_is_" + str(p) + " 1" + (" 0" * (len(Q))) + "\n"
+        s += ":=\nempty_is_" + str(p+1) + " 1" + (" 0" * (len(Q)-1)) + "\n"
         for h in H:
             s += str(h.id) + " "
             h_seq = h.nodes[0].base_node.getSequence(p)
@@ -95,7 +94,7 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
             s += "\n"
         s += ";\n\n"
 
-        s += "param f" + str(p) + " :=\nempty_is_" + str(p) + " 1\n"
+        s += "param f" + str(p+1) + " :=\nempty_is_" + str(p+1) + " 1\n"
         for h in H:
             s += str(h.id) + " 0\n"
         s += ";\n\n"
@@ -131,7 +130,7 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
     # Print utilities
     # --------------------------
     for player in range(cfr_tree.numOfPlayers):
-        s += "param U" + str(player) + " default 0 :=\n"
+        s += "param U" + str(player+1) + " default 0 :=\n"
         for js in minimal_sequences.values():
             expected_utility = root.utilityFromJointSequence(js)
             for p in range(cfr_tree.numOfPlayers):
