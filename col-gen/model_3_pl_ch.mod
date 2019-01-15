@@ -190,4 +190,4 @@ s.t. const15_milp_z123{q1 in Q1,q2 in Q2,q3 in Q3}:
 	z_123[q1,q2,q3] >= z_12[q1,q2] + rp3_pricer[q3] - 1;
 
 
-# data;
+data;

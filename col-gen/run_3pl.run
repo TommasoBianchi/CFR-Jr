@@ -1,7 +1,3 @@
-# load .mod and .dat
-model model_3_pl_ch.mod;
-data prova.dat;
-
 # digits of precision to which displayed numbers are rounded;full precision=0
 option display_precision 0;
 
@@ -14,7 +10,7 @@ param flag_print_duals default 0;
 
 # compute the tuples of sequences indentifying terminal nodes of the games
 # HP: no terminal nodes have values (0,0,0)
-let {q1 in Q1, q2 in Q2, q3 in Q3} suppU[q1,q2,q3] := if ( U1[q1,q2,q3] <> 0 or U2[q1,q2,q3] <> 0 or U3[q1,q2,q3] ) <> 0 then 1 else 0;
+let {q1 in Q1, q2 in Q2, q3 in Q3} suppU[q1,q2,q3] := if ( U1[q1,q2,q3] <> 0 or U2[q1,q2,q3] <> 0 or U3[q1,q2,q3] <> 0) then 1 else 0;
 
 printf "Number of terminal nodes = %d\n", sum{q1 in Q1,q2 in Q2,q3 in Q3} suppU[q1,q2,q3];
 
@@ -190,9 +186,9 @@ repeat{
       break;
      }
      print "\n";
-  }while OPTIMAL <> 1;
+  }
+}while OPTIMAL <> 1;
 
-  printf "LOG: feas=%s opt=%s ph1_it=%d ph2_it=%d time=%f welfare=%f\n", if aux_obj > 1e-09 then 0 else 1, OPTIMAL, it_ph1, it, _ampl_time, welfare;
+printf "LOG: feas=%s opt=%s ph1_it=%d ph2_it=%d time=%f welfare=%f\n", if aux_obj > 1e-09 then 0 else 1, OPTIMAL, it_ph1, it, _ampl_time, welfare;
 
-  printf "|Q1|=%d, |Q2|=%d, |Q3|=%d, |H1|=%d, |H2|=%d, |H3|=%d\n", card(Q1), card(Q2), card(Q3), card(H1), card(H2), card(H3);
-}
+printf "|Q1|=%d, |Q2|=%d, |Q3|=%d, |H1|=%d, |H2|=%d, |H3|=%d\n", card(Q1), card(Q2), card(Q3), card(H1), card(H2), card(H3);
