@@ -72,6 +72,15 @@ param it_ph1 default 0;
 # 0 for phase I (auxiliary problem), 1 for phase II
 param ph default 0;
 
+param time_start default 0;
+param time_end default 0;
+
+param time_phase1 default 0;
+param time_phase2 default 0;
+
+param time_start_all default 0;
+let time_start_all := time();
+
 # pure realization plans computed by the pricers
 param best_rp1{Q1};
 param best_rp2{Q2};
@@ -82,9 +91,13 @@ param best_violation;
 #******************************************************************************
 # BODY OF THE COL-GEN ALGORITHM
 #******************************************************************************
+let time_phase1 := time();
+
 repeat{
   let it := it + 1;
   printf "*********Iteration %d\n", it;
+
+  let time_start := time();
 
   #
   # MASTER PROBLEMS
@@ -127,9 +140,15 @@ repeat{
     display alpha1, alpha2, alpha3, beta1, beta2, beta3, gamma;
   }
 
+  let time_end := time() - time_start;
+  printf "Ph=%s,it=%d,Time master=%f \n", ph, it, time_end;
+
   #
   # PRICERS
   #
+
+  let time_start := time();
+
   let best_violation := -1;
   printf "********(Ph=%s,it=%d)*********Solving pricer\n", ph, it;
 
@@ -187,6 +206,9 @@ repeat{
     let OPTIMAL := 0;
   }
 
+  let time_end := time() - time_start;
+  printf "Ph=%s,it=%d,Time pricer=%f \n", ph, it, time_end;
+
   if ph == 0 then
      printf "aux_obj=%f\n", aux_obj;
   else
@@ -201,6 +223,9 @@ repeat{
     let it := 0;
     let OPTIMAL := 0;
 
+    let time_phase1 := time() - time_phase1;
+    let time_phase2 := time();
+
     if aux_obj > 1e-06 then {
       printf "aux_obj = %f: Phase II problem *apparenty* infeasible; halting\n", aux_obj;
       break;
@@ -209,6 +234,10 @@ repeat{
   }
 }while OPTIMAL <> 1;
 
-printf "LOG: feas=%s opt=%s ph1_it=%d ph2_it=%d time=%f welfare=%f\n", if aux_obj > 1e-09 then 0 else 1, OPTIMAL, it_ph1, it, _ampl_time, welfare;
+let time_phase2 := time() - time_phase2;
 
-printf "|Q1|=%d, |Q2|=%d, |Q3|=%d, |H1|=%d, |H2|=%d, |H3|=%d\n", card(Q1), card(Q2), card(Q3), card(H1), card(H2), card(H3);
+printf "LOG: feas=%s opt=%s ph1_it=%d ph2_it=%d time=%f welfare=%f \n", if aux_obj > 1e-09 then 0 else 1, OPTIMAL, it_ph1, it, _ampl_time, welfare;
+
+printf "|Q1|=%d, |Q2|=%d, |Q3|=%d, |H1|=%d, |H2|=%d, |H3|=%d \n", card(Q1), card(Q2), card(Q3), card(H1), card(H2), card(H3);
+
+printf "total time seconds=%d, phase1=%d, phase2=%d  \n", (time()-time_start_all), time_phase1, time_phase2;
