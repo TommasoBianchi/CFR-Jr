@@ -74,8 +74,8 @@ def build_goofspiel_hand_tree(hand, remaining_cards, played_cards, current_round
 
     for card in current_player_cards:
         actionName = "p" + str(current_node.player) + "c" + str(card)
-        n = tree.addNode(current_player, information_set, parent = current_node, actionName = actionName)
-        n.known_information = (current_round, hand[:current_round+1], [c[:current_round] for c in played_cards])
+        n = tree.addNode(next_player, information_set, parent = current_node, actionName = actionName)
+        n.known_information = (current_round, hand[:current_round+1], [c[:next_round] for c in played_cards])
         nodes.append(n)
         remaining_cards[current_player].remove(card)
         played_cards[current_player].append(card)
