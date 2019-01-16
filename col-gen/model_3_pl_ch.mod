@@ -125,7 +125,7 @@ var rp3_pricer{Q3} binary;
 # per il quadratico
 var z{Q1,Q2} >= 0, <= 1;
 
-# per il cubico
+# per il lineare versione 1
 /* var z_123{Q1,Q2,Q3} >= 0, <= 1;
 var z_12{Q1,Q2}  >= 0, <= 1;
 var z_13{Q1,Q3}  >= 0, <= 1;
@@ -195,44 +195,42 @@ s.t. quadratic_z_2{q1 in Q1, q2 in Q2}:
 	z[q1,q2] <= rp2_pricer[q2];
 s.t. quadratic_z_3{q1 in Q1, q2 in Q2}:
 	z[q1,q2] >= rp1_pricer[q1] + rp2_pricer[q2] - 1;
+
 #
-# FULLY LINEARIZED
+# LINEARIZED
 #
-/* s.t. const4_milp_z12{q1 in Q1,q2 in Q2}:
+# z_123
+/* s.t. c_z123_1{q1 in Q1, q2 in Q2, q3 in Q3}:
+	z_123[q1,q2,q3] <= rp1_pricer[q1];
+s.t. c_z123_2{q1 in Q1, q2 in Q2, q3 in Q3}:
+	z_123[q1,q2,q3] <= rp2_pricer[q2];
+s.t. c_z123_3{q1 in Q1, q2 in Q2, q3 in Q3}:
+	z_123[q1,q2,q3] <= rp3_pricer[q3];
+s.t. c_z123_4{q1 in Q1, q2 in Q2, q3 in Q3}:
+	z_123[q1,q2,q3] >= rp1_pricer[q1] + rp2_pricer[q2] + rp3_pricer[q3] - 2;
+
+# z_12
+s.t. c_z12_1{q1 in Q1, q2 in Q2}:
 	z_12[q1,q2] <= rp1_pricer[q1];
-
-s.t. const5_milp_z12{q1 in Q1,q2 in Q2}:
+s.t. c_z12_2{q1 in Q1, q2 in Q2}:
 	z_12[q1,q2] <= rp2_pricer[q2];
-
-s.t. const6_milp_z12{q1 in Q1,q2 in Q2}:
+s.t. c_z12_3{q1 in Q1, q2 in Q2}:
 	z_12[q1,q2] >= rp1_pricer[q1] + rp2_pricer[q2] - 1;
 
-s.t. const7_milp_z13{q1 in Q1,q3 in Q3}:
+# z_13
+s.t. c_z13_1{q1 in Q1, q3 in Q3}:
 	z_13[q1,q3] <= rp1_pricer[q1];
-
-s.t. const8_milp_z13{q1 in Q1,q3 in Q3}:
+s.t. c_z13_2{q1 in Q1, q3 in Q3}:
 	z_13[q1,q3] <= rp3_pricer[q3];
-
-s.t. const9_milp_z13{q1 in Q1,q3 in Q3}:
+s.t. c_z13_3{q1 in Q1, q3 in Q3}:
 	z_13[q1,q3] >= rp1_pricer[q1] + rp3_pricer[q3] - 1;
 
-s.t. const10_milp_z23{q2 in Q2,q3 in Q3}:
+# z_23
+s.t. c_z23_1{q2 in Q2, q3 in Q3}:
 	z_23[q2,q3] <= rp2_pricer[q2];
-
-s.t. const11_milp_z23{q2 in Q2,q3 in Q3}:
+s.t. c_z23_2{q2 in Q2, q3 in Q3}:
 	z_23[q2,q3] <= rp3_pricer[q3];
-
-s.t. const12_milp_z23{q2 in Q2,q3 in Q3}:
-	z_23[q2,q3] >= rp2_pricer[q2] + rp3_pricer[q3] - 1;
-
-s.t. const13_milp_z123{q1 in Q1,q2 in Q2,q3 in Q3}:
-	z_123[q1,q2,q3] <= z_12[q1,q2];
-
-s.t. const14_milp_z123{q1 in Q1,q2 in Q2,q3 in Q3}:
-	z_123[q1,q2,q3] <= rp3_pricer[q3];
-
-s.t. const15_milp_z123{q1 in Q1,q2 in Q2,q3 in Q3}:
-	z_123[q1,q2,q3] >= z_12[q1,q2] + rp3_pricer[q3] - 1; */
-
+s.t. c_z23_3{q2 in Q2, q3 in Q3}:
+	z_23[q2,q3] >= rp2_pricer[q2] + rp3_pricer[q3] - 1; */
 
 data;

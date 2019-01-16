@@ -28,22 +28,6 @@ problem master_phase1: aux_obj, c11_phase1, c12_phase1, c13_phase1, c21_phase1, 
 # COMPUTING AN OPTIMAL solution (PHASE II)
 problem master: welfare, c11, c12, c13, c21, c22, c23, c3, sigma, v1, v2;
 
-# LINEAR PRICER for PHASE I
-/* problem pricer_aux: obj_pricer_milp_aux,
-const1_milp_sf1, const2_milp_sf2, const3_milp_sf3,
-const4_milp_z12, const5_milp_z12, const6_milp_z12,
-const7_milp_z13, const8_milp_z13, const9_milp_z13,
-const10_milp_z23, const11_milp_z23, const12_milp_z23,
-const13_milp_z123, const14_milp_z123, const15_milp_z123, rp1_pricer, rp2_pricer, rp3_pricer; */
-
-# Linear PRICER for PHASE II
-/* problem pricer: obj_pricer_milp,
-const1_milp_sf1, const2_milp_sf2, const3_milp_sf3,
-const4_milp_z12, const5_milp_z12, const6_milp_z12,
-const7_milp_z13, const8_milp_z13, const9_milp_z13,
-const10_milp_z23, const11_milp_z23, const12_milp_z23,
-const13_milp_z123, const14_milp_z123, const15_milp_z123, rp1_pricer, rp2_pricer, rp3_pricer; */
-
 /* # cubic pricer for phase I
 problem pricer_aux: obj_pricer_milp_aux,
 const1_milp_sf1, const2_milp_sf2, const3_milp_sf3, rp1_pricer, rp2_pricer, rp3_pricer;
@@ -58,6 +42,26 @@ problem pricer_aux: obj_pricer_milp_aux, quadratic_z_1, quadratic_z_2, quadratic
 # quadratic pricer for phase II
 problem pricer: obj_pricer_milp, quadratic_z_1, quadratic_z_2, quadratic_z_3,
 const1_milp_sf1, const2_milp_sf2, const3_milp_sf3, z, rp1_pricer, rp2_pricer, rp3_pricer;
+
+/* # linear pricer v2 phase I
+problem pricer_aux: obj_pricer_milp_aux,
+c_z123_1, c_z123_2, c_z123_3, c_z123_4,
+c_z12_1, c_z12_2, c_z12_3,
+c_z13_1, c_z13_2, c_z13_3,
+c_z23_1, c_z23_2, c_z23_3,
+const1_milp_sf1, const2_milp_sf2, const3_milp_sf3,
+rp1_pricer, rp2_pricer, rp3_pricer,
+z_123, z_12, z_13, z_23;
+
+# linear pricer v2 phase II
+problem pricer: obj_pricer_milp,
+c_z123_1, c_z123_2, c_z123_3, c_z123_4,
+c_z12_1, c_z12_2, c_z12_3,
+c_z13_1, c_z13_2, c_z13_3,
+c_z23_1, c_z23_2, c_z23_3,
+const1_milp_sf1, const2_milp_sf2, const3_milp_sf3,
+rp1_pricer, rp2_pricer, rp3_pricer,
+z_123, z_12, z_13, z_23; */
 
 
 param OPTIMAL default 0;
