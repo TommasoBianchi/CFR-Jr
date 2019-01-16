@@ -122,10 +122,14 @@ var rp1_pricer{Q1} binary;
 var rp2_pricer{Q2} binary;
 var rp3_pricer{Q3} binary;
 
-var z_123{Q1,Q2,Q3};
-var z_12{Q1,Q2};
-var z_13{Q1,Q3};
-var z_23{Q2,Q3};
+# per il quadratico
+var z{Q1,Q2} >= 0, <= 1;
+
+# per il cubico
+/* var z_123{Q1,Q2,Q3} >= 0, <= 1;
+var z_12{Q1,Q2}  >= 0, <= 1;
+var z_13{Q1,Q3}  >= 0, <= 1;
+var z_23{Q2,Q3}  >= 0, <= 1; */
 
 ################################ PRICER MILP
 # minimize obj_pricer_milp:
@@ -133,30 +137,45 @@ var z_23{Q2,Q3};
 #         z_123[q1,q2,q3] * ((alpha1-1)*U1[q1,q2,q3] + (alpha2-1)*U2[q1,q2,q3] + (alpha3-1)*U3[q1,q2,q3])
 #       ) + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta1[q1]*z_23[q2,q3]*U1[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta2[q2]*z_13[q1,q3]*U2[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta3[q3]*z_12[q1,q2]*U3[q1,q2,q3];
 
-maximize obj_pricer_milp:
+
+# linearized
+/* maximize obj_pricer_milp:
     sum{q1 in Q1, q2 in Q2, q3 in Q3} (
         z_123[q1,q2,q3] * ((alpha1+1)*U1[q1,q2,q3] + (alpha2+1)*U2[q1,q2,q3] + (alpha3+1)*U3[q1,q2,q3])
-      ) + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta1[q1]*z_23[q2,q3]*U1[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta2[q2]*z_13[q1,q3]*U2[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta3[q3]*z_12[q1,q2]*U3[q1,q2,q3];
+      ) + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta1[q1]*z_23[q2,q3]*U1[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta2[q2]*z_13[q1,q3]*U2[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta3[q3]*z_12[q1,q2]*U3[q1,q2,q3]; */
+
+# quadratic
+maximize obj_pricer_milp:
+		sum{q1 in Q1, q2 in Q2, q3 in Q3} (
+			z[q1,q2]*rp3_pricer[q3]*((alpha1+1)*U1[q1,q2,q3] + (alpha2+1)*U2[q1,q2,q3] + (alpha3+1)*U3[q1,q2,q3])
+			)+ sum{q1 in Q1,q2 in Q2,q3 in Q3} beta1[q1]* rp2_pricer[q2]*rp3_pricer[q3] *U1[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta2[q2]* rp1_pricer[q1]*rp3_pricer[q3] *U2[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta3[q3]* rp1_pricer[q1]*rp2_pricer[q2] *U3[q1,q2,q3];
 
 
+# cubic
 /* maximize obj_pricer_milp:
     sum{q1 in Q1, q2 in Q2, q3 in Q3} (
         rp1_pricer[q1]*rp2_pricer[q2]*rp3_pricer[q3] * ((alpha1+1)*U1[q1,q2,q3] + (alpha2+1)*U2[q1,q2,q3] + (alpha3+1)*U3[q1,q2,q3])
-      ) + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta1[q1]* rp2_pricer[q2]*rp3_pricer[q3] *U1[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta2[q2]* rp1_pricer[q1]*rp3_pricer[q3] *U2[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta3[q3]* rp1_pricer[q1]*rp2_pricer[q2] *U3[q1,q2,q3];
-*/
+      ) + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta1[q1]* rp2_pricer[q2]*rp3_pricer[q3] *U1[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta2[q2]* rp1_pricer[q1]*rp3_pricer[q3] *U2[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta3[q3]* rp1_pricer[q1]*rp2_pricer[q2] *U3[q1,q2,q3]; */
 
+# linearized
 # this is the objective function for the auxiliary game's pricer
-maximize obj_pricer_milp_aux:
+/* maximize obj_pricer_milp_aux:
 sum{q1 in Q1, q2 in Q2, q3 in Q3} (
         z_123[q1,q2,q3] * (alpha1*U1[q1,q2,q3] + alpha2*U2[q1,q2,q3] + alpha3*U3[q1,q2,q3])
-      ) + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta1[q1]*z_23[q2,q3]*U1[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta2[q2]*z_13[q1,q3]*U2[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta3[q3]*z_12[q1,q2]*U3[q1,q2,q3];
+      ) + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta1[q1]*z_23[q2,q3]*U1[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta2[q2]*z_13[q1,q3]*U2[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta3[q3]*z_12[q1,q2]*U3[q1,q2,q3]; */
 
+# quadratic
+maximize obj_pricer_milp_aux:
+    sum{q1 in Q1, q2 in Q2, q3 in Q3} (
+        z[q1,q2]*rp3_pricer[q3] * (alpha1*U1[q1,q2,q3] + alpha2*U2[q1,q2,q3] + alpha3*U3[q1,q2,q3])
+      ) + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta1[q1]* rp2_pricer[q2]*rp3_pricer[q3] *U1[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta2[q2]* rp1_pricer[q1]*rp3_pricer[q3] *U2[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta3[q3]* rp1_pricer[q1]*rp2_pricer[q2] *U3[q1,q2,q3];
 
-/*maximize obj_pricer_milp_aux:
+# cubic
+/* maximize obj_pricer_milp_aux:
     sum{q1 in Q1, q2 in Q2, q3 in Q3} (
         rp1_pricer[q1]*rp2_pricer[q2]*rp3_pricer[q3] * (alpha1*U1[q1,q2,q3] + alpha2*U2[q1,q2,q3] + alpha3*U3[q1,q2,q3])
-      ) + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta1[q1]* rp2_pricer[q2]*rp3_pricer[q3] *U1[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta2[q2]* rp1_pricer[q1]*rp3_pricer[q3] *U2[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta3[q3]* rp1_pricer[q1]*rp2_pricer[q2] *U3[q1,q2,q3];
-*/
+      ) + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta1[q1]* rp2_pricer[q2]*rp3_pricer[q3] *U1[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta2[q2]* rp1_pricer[q1]*rp3_pricer[q3] *U2[q1,q2,q3] + sum{q1 in Q1,q2 in Q2,q3 in Q3} beta3[q3]* rp1_pricer[q1]*rp2_pricer[q2] *U3[q1,q2,q3]; */
+
 
 s.t. const1_milp_sf1{h1 in H1}:
     sum{q1 in Q1} F1[h1,q1]*rp1_pricer[q1] = f1[h1];
@@ -167,7 +186,19 @@ s.t. const2_milp_sf2{h2 in H2}:
 s.t. const3_milp_sf3{h3 in H3}:
     sum{q3 in Q3} F3[h3,q3]*rp3_pricer[q3] = f3[h3];
 
-s.t. const4_milp_z12{q1 in Q1,q2 in Q2}:
+#
+# constraints for the quadratic problem
+#
+s.t. quadratic_z_1{q1 in Q1, q2 in Q2}:
+	z[q1,q2] <= rp1_pricer[q1];
+s.t. quadratic_z_2{q1 in Q1, q2 in Q2}:
+	z[q1,q2] <= rp2_pricer[q2];
+s.t. quadratic_z_3{q1 in Q1, q2 in Q2}:
+	z[q1,q2] >= rp1_pricer[q1] + rp2_pricer[q2] - 1;
+#
+# FULLY LINEARIZED
+#
+/* s.t. const4_milp_z12{q1 in Q1,q2 in Q2}:
 	z_12[q1,q2] <= rp1_pricer[q1];
 
 s.t. const5_milp_z12{q1 in Q1,q2 in Q2}:
@@ -201,7 +232,7 @@ s.t. const14_milp_z123{q1 in Q1,q2 in Q2,q3 in Q3}:
 	z_123[q1,q2,q3] <= rp3_pricer[q3];
 
 s.t. const15_milp_z123{q1 in Q1,q2 in Q2,q3 in Q3}:
-	z_123[q1,q2,q3] >= z_12[q1,q2] + rp3_pricer[q3] - 1;
+	z_123[q1,q2,q3] >= z_12[q1,q2] + rp3_pricer[q3] - 1; */
 
 
 data;
