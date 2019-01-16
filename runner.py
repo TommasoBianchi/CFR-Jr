@@ -7,9 +7,40 @@ from cfr_code.sample_cfr import SolveWithSampleCFR
 
 import time
 import json
+import argparse
 
-log_file_name = "results/" + str(int(time.time())) + "log.log"
+parser = argparse.ArgumentParser(description='runner parser')
 
+parser.add_argument('game', type=str, help='type of game instance (kuhn, leduc, goofspiel)', choices=['kuhn','leduc','goofspiel'])
+
+parser.add_argument('--players', '-p', type=int, default=3, help='number of players')
+parser.add_argument('--rank', '-r', type=int, default=3, help='rank of the game')
+parser.add_argument('--suits', '-s', type=int, default=3, help='number of suits (only for leduc')
+parser.add_argument('--betting_parameters', '-bp', type=int, default=[2,4], nargs='*', help='betting parameters (only for leduc')
+parser.add_argument('--tie_solver', '-ts', type=str, default='accumulate', help='strategy for solving ties (only for goofspiel)',
+					choices=['accumulate','discard_if_all','discard_always'])
+
+parser.add_argument('--number_iterations', '-t', type=int, default=100000, help='number of iterations to run')
+parser.add_argument('--bootstrap_iterations', '-bt', type=int, default=0, help='number of iterations to run without sampling')
+parser.add_argument('--check_every_iteration', '-ct', type=int, default=-1, help='every how many iteration to check the epsilon')
+parser.add_argument('--bound_joint_size', '-bjs', const=True, nargs='?', help='bound or not the limit of the resulting joint strategy')
+
+parser.add_argument('--logfile', '-log', type=str, default=(str(int(time.time())) + "log.log"))
+
+args = parser.parse_args()
+parameters_dict = vars(args)
+
+num_players = args.players
+rank = args.rank
+num_of_suits = args.suits
+betting_parameters = args.betting_parameters
+
+number_iterations = args.number_iterations
+bootstrap_iterations = args.bootstrap_iterations
+check_every_iteration = args.check_every_iteration
+bound_joint_size = args.bound_joint_size != None
+
+log_file_name = args.logfile
 log = open(log_file_name, "a")
 
 # ----------------------------------------
@@ -27,90 +58,59 @@ def log_except_hook(*exc_info):
 sys.excepthook = log_except_hook
 # ----------------------------------------
 
-kuhn_parameters = []
-
-for players in range(2, 4):
-	for rank in range(2, 7):
-		kuhn_parameters.append({
-				"num_players": players,
-				"rank" : rank,
-				"number_iterations": 1000000,
-				"bootstrap_iterations": 10000,
-				"check_every_iteration": 10000,
-				"bound_joint_size": False
-			})
-
-leduc_parameters = []
-
-for players in range(2, 4):
-	for num_of_ranks in range(2, 5):
-		leduc_parameters.append({
-				"num_players": players,
-				"num_of_suits" : 2,
-				"num_of_ranks" : num_of_ranks,
-				"betting_parameters" : [2, 4],
-				"number_iterations": 1000000,
-				"bootstrap_iterations": 10000,
-				"check_every_iteration": 10000,
-				"bound_joint_size": False
-			})
-
-goofspiel_parameters = []
-
-for players in range(2, 4):
-	for rank in range(2, 5):
-		goofspiel_parameters.append({
-				"num_players": players,
-				"rank" : rank,
-				"number_iterations": 1000000,
-				"bootstrap_iterations": 10000,
-				"check_every_iteration": 10000,
-				"bound_joint_size": False
-			})
-
-for p in kuhn_parameters:
-	kuhn_tree = build_kuhn_tree(p["num_players"], p["rank"])
-	log.write("Built a kuhn tree with parameters: " + str(p) + "\n")
+if args.game == 'kuhn':
+	kuhn_tree = build_kuhn_tree(num_players, rank)
+	log.write("Built a kuhn tree with parameters: " + str(parameters_dict) + "\n")
 	log.flush()
 	cfr_tree = CFRTree(kuhn_tree)
-	res = SolveWithSampleCFR(cfr_tree, p["number_iterations"], bootstrap_iterations = p["bootstrap_iterations"],
-							 checkEveryIteration = p["check_every_iteration"], bound_joint_size = p["bound_joint_size"])
-	log.write("Finished solving.\n\n")
+	res = SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
+							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size)
+	log.write("Finished solving.\n")
+	log.write("Time elapsed = " + str(res['tot_time']) + " seconds.\n\n")
 	log.flush()
 	
-	results_file = open("results/kuhn/" + str(int(time.time())), "w+")
+	results_file = open("results/kuhn/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank), "w+")
 
-	results_file.write(json.dumps({"parameters": p, "data": res['graph_data']}))
+	results_file.write(json.dumps({"parameters": parameters_dict, "data": res['graph_data']}))
+	results_file.write("\n\nTotal duration = " + str(res['tot_time']) + " seconds.\n")
+	results_file.write("Average iterations per second = " + str(number_iterations / res['tot_time']) + "\n")
 	results_file.close()
 
-for p in leduc_parameters:
-	leduc_tree = build_leduc_tree(p["num_players"], p["num_of_suits"], p["num_of_ranks"], p["betting_parameters"])
-	log.write("Built a leduc tree with parameters: " + str(p) + "\n")
+if args.game == 'leduc':
+	leduc_tree = build_leduc_tree(num_players, num_of_suits, rank, betting_parameters)
+	log.write("Built a leduc tree with parameters: " + str(parameters_dict) + "\n")
 	log.flush()
 	cfr_tree = CFRTree(leduc_tree)
-	res = SolveWithSampleCFR(cfr_tree, p["number_iterations"], bootstrap_iterations = p["bootstrap_iterations"],
-							 checkEveryIteration = p["check_every_iteration"], bound_joint_size = p["bound_joint_size"])
-	log.write("Finished solving.\n\n")
+	res = SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
+							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size)
+	log.write("Finished solving.\n")
+	log.write("Time elapsed = " + str(res['tot_time']) + " seconds.\n\n")
 	log.flush()
 	
-	results_file = open("results/leduc/" + str(int(time.time())), "w+")
+	results_file = open("results/leduc/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(num_of_suits) \
+						+ "_" + str(rank), "w+")
 
-	results_file.write(json.dumps({"parameters": p, "data": res['graph_data']}))
+	results_file.write(json.dumps({"parameters": parameters_dict, "data": res['graph_data']}))
+	results_file.write("\n\nTotal duration = " + str(res['tot_time']) + " seconds.\n")
+	results_file.write("Average iterations per second = " + str(number_iterations / res['tot_time']) + "\n")
 	results_file.close()
 
-for p in goofspiel_parameters:
-	goofspiel_tree = build_goofspiel_tree(p["num_players"], p["rank"])
-	log.write("Built a goofspiel tree with parameters: " + str(p) + "\n")
+if args.game == 'goofspiel':
+	goofspiel_tree = build_goofspiel_tree(num_players, rank)
+	log.write("Built a goofspiel tree with parameters: " + str(parameters_dict) + "\n")
 	log.flush()
 	cfr_tree = CFRTree(goofspiel_tree)
-	res = SolveWithSampleCFR(cfr_tree, p["number_iterations"], bootstrap_iterations = p["bootstrap_iterations"],
-							 checkEveryIteration = p["check_every_iteration"], bound_joint_size = p["bound_joint_size"])
-	log.write("Finished solving.\n\n")
+	res = SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
+							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size)
+	log.write("Finished solving.\n")
+	log.write("Time elapsed = " + str(res['tot_time']) + " seconds.\n\n")
 	log.flush()
 	
-	results_file = open("results/goofspiel/" + str(int(time.time())), "w+")
+	results_file = open("results/goofspiel/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank), "w+")
 
-	results_file.write(json.dumps({"parameters": p, "data": res['graph_data']}))
+	results_file.write(json.dumps({"parameters": parameters_dict, "data": res['graph_data']}))
+	results_file.write("\n\nTotal duration = " + str(res['tot_time']) + " seconds.\n")
+	results_file.write("Average iterations per second = " + str(number_iterations / res['tot_time']) + "\n")
 	results_file.close()
 
 

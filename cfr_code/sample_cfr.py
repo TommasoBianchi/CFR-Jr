@@ -75,6 +75,7 @@ def SolveWithSampleCFR(cfr_tree, iterations, perc = 10, show_perc = False, check
     graph_data = []
 
     start_time = time.time()
+    last_checkpoint_time = start_time
     
     for i in range(1, iterations+bootstrap_iterations+1):
         t = i - bootstrap_iterations
@@ -101,11 +102,13 @@ def SolveWithSampleCFR(cfr_tree, iterations, perc = 10, show_perc = False, check
         if(checkEveryIteration > 0 and t % checkEveryIteration == 0):
             data = {'epsilon': cfr_tree.checkEquilibrium(jointStrategy),
                     'absolute_joint_size': jointStrategy.frequencyCount,
+                    'joint_support_size': len(jointStrategy.plans),
                     'relative_joint_size': jointStrategy.frequencyCount / t,
                     'max_plan_frequency': max(jointStrategy.plans.values()),
                     'iteration_number': t,
-                    'duration': time.time() - start_time}
+                    'duration': time.time() - last_checkpoint_time}
             graph_data.append(data)
-            start_time = time.time()
+            last_checkpoint_time = time.time()
         
-    return {'utility': cfr_tree.getUtility(jointStrategy), 'joint': jointStrategy, 'graph_data': graph_data}
+    return {'utility': cfr_tree.getUtility(jointStrategy), 'joint': jointStrategy, 'graph_data': graph_data,
+            'tot_time': time.time() - start_time}
