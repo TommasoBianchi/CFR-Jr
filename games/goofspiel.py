@@ -1,7 +1,14 @@
 from data_structures.trees import Tree, Node, ChanceNode
 from functools import reduce
+from enum import Enum
 
-def build_goofspiel_tree(num_players, rank):
+class TieSolver(Enum):
+    Accumulate = 0
+    DiscardIfAll = 1
+    DiscardIfHigh = 2
+    DiscardAlways = 3
+
+def build_goofspiel_tree(num_players, rank, tie_solver = TieSolver.Accumulate):
     """
     Build a tree for the game of Goofspiel with a given number of players and a given number of ranks in the deck (i.e. how
     many cards).
@@ -20,7 +27,7 @@ def build_goofspiel_tree(num_players, rank):
         n.known_information = (0, hand[:1], [[] for p in range(num_players)])
         all_nodes.append(n)
         all_nodes += build_goofspiel_hand_tree(hand, [list(range(1, rank+1)) for p in range(num_players)],
-                                  [[] for p in range(num_players)], 0, 1, n, tree)
+                                  [[] for p in range(num_players)], 0, 0, n, tree, tie_solver)
 
     # Merge nodes into infosets based on the available information at each node
     for i1 in range(len(all_nodes)):
@@ -34,7 +41,7 @@ def build_goofspiel_tree(num_players, rank):
             
     return tree
 
-def build_goofspiel_hand_tree(hand, remaining_cards, played_cards, current_round, current_player, current_node, tree):
+def build_goofspiel_hand_tree(hand, remaining_cards, played_cards, current_round, current_player, current_node, tree, tie_solver):
     """
     Recursively build the subtree for the Kuhn game where the hand is fixed.
     """
@@ -57,7 +64,7 @@ def build_goofspiel_hand_tree(hand, remaining_cards, played_cards, current_round
             remaining_cards[current_player].remove(card)
             played_cards[current_player].append(card)
             final_played_cards = [played_cards[i] + remaining_cards[i] for i in range(len(played_cards))]
-            l = tree.addLeaf(parent = current_node, utility = goofspiel_utility(hand, final_played_cards))
+            l = tree.addLeaf(parent = current_node, utility = goofspiel_utility(hand, final_played_cards, tie_solver))
             remaining_cards[current_player].append(card)
             played_cards[current_player].remove(card)
         return [l]
@@ -72,7 +79,7 @@ def build_goofspiel_hand_tree(hand, remaining_cards, played_cards, current_round
         nodes.append(n)
         remaining_cards[current_player].remove(card)
         played_cards[current_player].append(card)
-        nodes += build_goofspiel_hand_tree(hand, remaining_cards, played_cards, next_round, next_player, n, tree)
+        nodes += build_goofspiel_hand_tree(hand, remaining_cards, played_cards, next_round, next_player, n, tree, tie_solver)
         remaining_cards[current_player].append(card)
         played_cards[current_player].remove(card)
 
@@ -116,7 +123,7 @@ def all_permutations(items):
 
     return permutations
 
-def goofspiel_utility(hand, moves):
+def goofspiel_utility(hand, moves, tie_solver = TieSolver.Accumulate):
     """
     Get the utility of a Goofspiel game given the hand and how the players have played.
     """
@@ -127,17 +134,18 @@ def goofspiel_utility(hand, moves):
 
     for i in range(len(hand)):
         round_moves = [moves[p][i] for p in range(num_players)]
-        winner = winner_player(round_moves)
+        winner = winner_player(round_moves, tie_solver)
 
         if(winner == -1):
-            additional_utility += hand[i]
+            if tie_solver == TieSolver.Accumulate:
+                additional_utility += hand[i]
         else:
             u[winner] += hand[i] + additional_utility
             additional_utility = 0
 
     return u
 
-def winner_player(round_moves):
+def winner_player(round_moves, tie_solver):
     """
     Calculate the winner player given the cards that were played in a round.
     """
@@ -155,6 +163,14 @@ def winner_player(round_moves):
     if(len(single_moves) == 0):
         return -1
 
+    if(len(single_moves) < len(round_moves) and tie_solver == TieSolver.DiscardAlways):
+        # At least two players have played the same card, so under the DiscardAlways tie solver we have no winner
+        return -1
+
     winner = max(single_moves, key = lambda el: el[0])[1][0]
+
+    if(round_moves[winner] != max(round_moves) and tie_solver == TieSolver.DiscardIfHigh):
+        # There was a tie on the higher card played, so under the DiscardIfHigh tie solver we have no winner
+        return -1
 
     return winner

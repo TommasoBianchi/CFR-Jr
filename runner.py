@@ -1,6 +1,6 @@
 from games.kuhn import build_kuhn_tree
 from games.leduc import build_leduc_tree
-from games.goofspiel import build_goofspiel_tree
+from games.goofspiel import build_goofspiel_tree, TieSolver
 
 from data_structures.cfr_trees import CFRTree
 from cfr_code.sample_cfr import SolveWithSampleCFR
@@ -18,7 +18,7 @@ parser.add_argument('--rank', '-r', type=int, default=3, help='rank of the game'
 parser.add_argument('--suits', '-s', type=int, default=3, help='number of suits (only for leduc')
 parser.add_argument('--betting_parameters', '-bp', type=int, default=[2,4], nargs='*', help='betting parameters (only for leduc')
 parser.add_argument('--tie_solver', '-ts', type=str, default='accumulate', help='strategy for solving ties (only for goofspiel)',
-					choices=['accumulate','discard_if_all','discard_always'])
+					choices=['accumulate','discard_if_all','discard_if_high','discard_always'])
 
 parser.add_argument('--number_iterations', '-t', type=int, default=100000, help='number of iterations to run')
 parser.add_argument('--bootstrap_iterations', '-bt', type=int, default=0, help='number of iterations to run without sampling')
@@ -34,6 +34,8 @@ num_players = args.players
 rank = args.rank
 num_of_suits = args.suits
 betting_parameters = args.betting_parameters
+tie_solver = {'accumulate':TieSolver.Accumulate,'discard_if_all':TieSolver.DiscardIfAll,'discard_if_high':TieSolver.DiscardIfHigh,
+			  'discard_always':TieSolver.DiscardAlways}[args.tie_solver]
 
 number_iterations = args.number_iterations
 bootstrap_iterations = args.bootstrap_iterations
@@ -96,7 +98,7 @@ if args.game == 'leduc':
 	results_file.close()
 
 if args.game == 'goofspiel':
-	goofspiel_tree = build_goofspiel_tree(num_players, rank)
+	goofspiel_tree = build_goofspiel_tree(num_players, rank, tie_solver)
 	log.write("Built a goofspiel tree with parameters: " + str(parameters_dict) + "\n")
 	log.flush()
 	cfr_tree = CFRTree(goofspiel_tree)
