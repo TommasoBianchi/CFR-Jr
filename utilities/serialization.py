@@ -124,13 +124,20 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
     # --------------------------
     # Print utilities
     # --------------------------
+    # for player in range(cfr_tree.numOfPlayers):
+    #     s += "param U" + str(player+1) + " :=\n"
+    #     for js in all_joint_sequences:
+    #         expected_utility = 0.0
+    #         if js in minimal_sequences.values():
+    #             expected_utility = root.utilityFromJointSequence(js)[player]
+    #         for p in range(cfr_tree.numOfPlayers):
+    #             s += sequence_to_string(js[p], p) + " "
+    #         s += str(expected_utility) + "\n"
+    #     s += ";\n\n"
     for player in range(cfr_tree.numOfPlayers):
-        s += "param U" + str(player+1) + " :=\n"
-
-        for js in all_joint_sequences:
-            expected_utility = 0.0
-            if js in minimal_sequences.values():
-                expected_utility = root.utilityFromJointSequence(js)[player]
+        s += "param U" + str(player+1) + " default 0 :=\n"
+        for js in minimal_sequences.values():
+            expected_utility = root.utilityFromJointSequence(js)[player]
             for p in range(cfr_tree.numOfPlayers):
                 s += sequence_to_string(js[p], p) + " "
             s += str(expected_utility) + "\n"
