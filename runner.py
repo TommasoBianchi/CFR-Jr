@@ -43,7 +43,23 @@ check_every_iteration = args.check_every_iteration
 bound_joint_size = args.bound_joint_size != None
 
 log_file_name = args.logfile
-log = open(log_file_name, "a")
+
+def log_line(string):
+	log_file = open(log_file_name, "a")
+	log_file.write(string + "\n")
+	log_file.flush()
+	log_file.close()
+
+def log_result_point_callback(results_file_name):
+	def __callback(datapoint):
+		results_file = open(results_file_name, "r")
+		old_data = json.load(results_file)
+		results_file.close()
+		old_data['data'].append(datapoint)
+		results_file = open(results_file_name, "w+")
+		results_file.write(json.dumps(old_data))
+		results_file.close()
+	return __callback
 
 # ----------------------------------------
 # Install handler to detect crashes
@@ -55,65 +71,82 @@ import traceback
 def log_except_hook(*exc_info):
     text = "".join(traceback.format_exception(*exc_info))
     logging.error("Unhandled exception: %s", text)
-    log.write("\n\n------Unhandled exception:------\n\n" + text)
+    log_line("\n\n------Unhandled exception:------\n\n" + text)
 
 sys.excepthook = log_except_hook
 # ----------------------------------------
 
 if args.game == 'kuhn':
 	kuhn_tree = build_kuhn_tree(num_players, rank)
-	log.write("Built a kuhn tree with parameters: " + str(parameters_dict) + "\n")
-	log.flush()
+	log_line("Built a kuhn tree with parameters: " + str(parameters_dict))
 	cfr_tree = CFRTree(kuhn_tree)
-	res = SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
-							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size)
-	log.write("Finished solving.\n")
-	log.write("Time elapsed = " + str(res['tot_time']) + " seconds.\n\n")
-	log.flush()
 	
-	results_file = open("results/kuhn/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank), "w+")
+	results_file_name = "results/kuhn/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank)
+	results_file = open(results_file_name, "w+")
+	results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
+	results_file.close()
 
-	results_file.write(json.dumps({"parameters": parameters_dict, "data": res['graph_data']}))
-	results_file.write("\n\nTotal duration = " + str(res['tot_time']) + " seconds.\n")
-	results_file.write("Average iterations per second = " + str(number_iterations / res['tot_time']) + "\n")
+	res = SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
+							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size,
+							 check_callback = log_result_point_callback(results_file_name))
+	log_line("Finished solving.")
+	log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
+	
+	results_file = open(results_file_name, "r")
+	old_data = json.load(results_file)
+	results_file.close()
+	old_data["total_duration"] = res['tot_time']
+	old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
+	results_file = open(results_file_name, "w+")
+	results_file.write(json.dumps(old_data))
 	results_file.close()
 
 if args.game == 'leduc':
 	leduc_tree = build_leduc_tree(num_players, num_of_suits, rank, betting_parameters)
-	log.write("Built a leduc tree with parameters: " + str(parameters_dict) + "\n")
-	log.flush()
+	log_line("Built a leduc tree with parameters: " + str(parameters_dict))
 	cfr_tree = CFRTree(leduc_tree)
-	res = SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
-							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size)
-	log.write("Finished solving.\n")
-	log.write("Time elapsed = " + str(res['tot_time']) + " seconds.\n\n")
-	log.flush()
-	
-	results_file = open("results/leduc/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(num_of_suits) \
-						+ "_" + str(rank), "w+")
 
-	results_file.write(json.dumps({"parameters": parameters_dict, "data": res['graph_data']}))
-	results_file.write("\n\nTotal duration = " + str(res['tot_time']) + " seconds.\n")
-	results_file.write("Average iterations per second = " + str(number_iterations / res['tot_time']) + "\n")
+	results_file_name = "results/leduc/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(num_of_suits) + "_" + str(rank)
+	results_file = open(results_file_name, "w+")
+	results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
+	results_file.close()
+
+	res = SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
+							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size,
+							 check_callback = log_result_point_callback(results_file_name))
+	log_line("Finished solving.")
+	log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
+	
+	results_file = open(results_file_name, "r")
+	old_data = json.load(results_file)
+	results_file.close()
+	old_data["total_duration"] = res['tot_time']
+	old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
+	results_file = open(results_file_name, "w+")
+	results_file.write(json.dumps(old_data))
 	results_file.close()
 
 if args.game == 'goofspiel':
 	goofspiel_tree = build_goofspiel_tree(num_players, rank, tie_solver)
-	log.write("Built a goofspiel tree with parameters: " + str(parameters_dict) + "\n")
-	log.flush()
+	log_line("Built a goofspiel tree with parameters: " + str(parameters_dict))
 	cfr_tree = CFRTree(goofspiel_tree)
-	res = SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
-							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size)
-	log.write("Finished solving.\n")
-	log.write("Time elapsed = " + str(res['tot_time']) + " seconds.\n\n")
-	log.flush()
-	
-	results_file = open("results/goofspiel/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank), "w+")
 
-	results_file.write(json.dumps({"parameters": parameters_dict, "data": res['graph_data']}))
-	results_file.write("\n\nTotal duration = " + str(res['tot_time']) + " seconds.\n")
-	results_file.write("Average iterations per second = " + str(number_iterations / res['tot_time']) + "\n")
+	results_file_name = "results/goofspiel/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank)
+	results_file = open(results_file_name, "w+")
+	results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
 	results_file.close()
 
+	res = SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
+							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size,
+							 check_callback = log_result_point_callback(results_file_name))
+	log_line("Finished solving.")
+	log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
 
-log.close()
+	results_file = open(results_file_name, "r")
+	old_data = json.load(results_file)
+	results_file.close()
+	old_data["total_duration"] = res['tot_time']
+	old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
+	results_file = open(results_file_name, "w+")
+	results_file.write(json.dumps(old_data))
+	results_file.close()

@@ -56,7 +56,7 @@ def sampleCFR(node, player, pi, action_plan):
     return v
 
 def SolveWithSampleCFR(cfr_tree, iterations, perc = 10, show_perc = False, checkEveryIteration = -1,
-                       bootstrap_iterations = 0, bound_joint_size = True):
+                       bootstrap_iterations = 0, bound_joint_size = True, check_callback = None):
     """
     Find a NFCCE in a given extensive-form tree with the SCFR algorithm, run for a given amount of iterations.
     If show_perc is True, every perc% of the target iterations are done a message is shown on the console.
@@ -108,6 +108,10 @@ def SolveWithSampleCFR(cfr_tree, iterations, perc = 10, show_perc = False, check
                     'iteration_number': t,
                     'duration': time.time() - last_checkpoint_time}
             graph_data.append(data)
+
+            if(check_callback != None):
+                check_callback(data)
+
             last_checkpoint_time = time.time()
         
     return {'utility': cfr_tree.getUtility(jointStrategy), 'joint': jointStrategy, 'graph_data': graph_data,
