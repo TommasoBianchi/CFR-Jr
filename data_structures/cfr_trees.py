@@ -48,6 +48,13 @@ class CFRTree:
                 self.information_sets[iset_id] = iset
                 node.information_set = iset
 
+        for iset in self.information_sets.values():
+            seq = iset.sequence
+            for n in iset.nodes:
+                if(n.base_node.getSequence(iset.player) != seq):
+                    raise Exception("ERROR: This tree is not a game with perfect recall. Nodes of information set " + iset.id +
+                                    " have different sequences.")
+
         self.infosets_by_player = []
         for p in range(self.numOfPlayers):
             p_isets = list(filter(lambda i: i.player == p, self.information_sets.values()))
@@ -275,9 +282,12 @@ class CFRNode:
         if(self.information_set == targetInfoset):
             return True
 
+        if(not self.information_set.id in actionPlan):
+            return False
+
         action = actionPlan[self.information_set.id]
 
-        if(self.children[action].isLeaf()):
+        if(action == -1 or self.children[action].isLeaf()):
             return False
         else:
             return self.children[action].isActionPlanLeadingToInfoset(actionPlan, targetInfoset)
@@ -383,9 +393,8 @@ class CFRChanceNode(CFRNode):
             childUtility = self.children[i].utilityFromModifiedActionPlan(actionPlan, modification, default)
 
             if(u == default):
-                u = childUtility.copy()
                 for p in range(len(childUtility)):
-                    u[p] *= self.distribution[i]
+                    u[p] = childUtility[p] * self.distribution[i]
             else:
                 for p in range(len(childUtility)):
                     u[p] += childUtility[p] * self.distribution[i]
@@ -489,7 +498,6 @@ class CFRInformationSet:
         It is used for calculate the epsilon value of equilibria.
         """
 
-        start_time = time.time()
         if(self.cached_V != None):
             return self.cached_V
 
@@ -516,16 +524,20 @@ class CFRInformationSet:
             for actionPlanString in joint.plans:
                 actionPlan = CFRJointStrategy.stringToActionPlan(actionPlanString)
 
-                if(not self.cfr_tree.root.isActionPlanLeadingToInfoset(actionPlan, self)):
+                updatedPlan = actionPlan.copy()
+                updatedPlan.update(modification_sequence)
+                if(not self.cfr_tree.root.isActionPlanLeadingToInfoset(updatedPlan, self)):
                     continue
 
                 frequency = joint.plans[actionPlanString] / joint.frequencyCount
 
-                u = self.cfr_tree.root.utilityFromModifiedActionPlan(actionPlan, modification_sequence,
-                                                                     default = [0] * self.cfr_tree.numOfPlayers)
+                for n in self.nodes:
+                    #u = n.children[a].utilityFromActionPlan(actionPlan, default = [0] * self.cfr_tree.numOfPlayers)
+                    u = n.utilityFromModifiedActionPlan(actionPlan, modification_sequence, default = [0] * self.cfr_tree.numOfPlayers)
 
-                if(u != None):
-                    v[a] += frequency * u[self.player]
+                    if(u != None):
+                        p = self.cfr_tree.root.distribution[self.cfr_tree.root.base_node.getActionLeadingToNode(n.base_node)]
+                        v[a] += frequency * u[self.player] * p
 
             # "Recursive" part of the sum
             for child in children:
