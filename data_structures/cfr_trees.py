@@ -48,6 +48,11 @@ class CFRTree:
                 self.information_sets[iset_id] = iset
                 node.information_set = iset
 
+        self.infosets_by_player = []
+        for p in range(self.numOfPlayers):
+            p_isets = list(filter(lambda i: i.player == p, self.information_sets.values()))
+            self.infosets_by_player.append(p_isets)
+
         for iset in self.information_sets.values():
             seq = iset.sequence
             for n in iset.nodes:
@@ -55,10 +60,16 @@ class CFRTree:
                     raise Exception("ERROR: This tree is not a game with perfect recall. Nodes of information set " + iset.id +
                                     " have different sequences.")
 
-        self.infosets_by_player = []
-        for p in range(self.numOfPlayers):
-            p_isets = list(filter(lambda i: i.player == p, self.information_sets.values()))
-            self.infosets_by_player.append(p_isets)
+            # Setup children leaves and children infosets for this information set
+            iset.children_infoset = []
+            iset.children_leaves = []
+            leaves_set = set()
+            self.root.find_terminals(leaves_set)
+            for a in range(iset.action_count):
+                seq  = iset.sequence.copy()
+                seq[iset.id] = a
+                iset.children_infoset.append(list(filter(lambda i: i.sequence == seq, self.infosets_by_player[iset.player])))
+                iset.children_leaves.append(list(filter(lambda l: l.base_node.getSequence(iset.player) == seq, leaves_set)))
 
     def sampleActionPlan(self):
         """
@@ -87,6 +98,24 @@ class CFRTree:
 
         return utility
 
+    def checkEquilibrium(self, joint):
+
+        epsilons = self.getUtility(joint)
+
+        for p in range(self.numOfPlayers):
+            self.root.clearMarginalizedUtility()
+
+            for (actionPlanString, frequency) in joint.plans.items():
+                self.root.marginalizePlayer(CFRJointStrategy.stringToActionPlan(actionPlanString),
+                                            frequency / joint.frequencyCount, p)
+
+            root_infosets = list(filter(lambda i: i.sequence == {}, self.infosets_by_player[p]))
+
+            epsilons[p] -= sum(map(lambda i: i.V(), root_infosets))
+
+        return epsilons
+
+    '''
     def checkEquilibrium(self, joint):
         """
         Given a joint strategy, calculate for which value of epsilon it is an epsilon-NFCCE.
@@ -123,6 +152,7 @@ class CFRTree:
             utility[p] -= cum_v
 
         return utility
+        '''
 
 class CFRNode:
     """
@@ -292,6 +322,32 @@ class CFRNode:
         else:
             return self.children[action].isActionPlanLeadingToInfoset(actionPlan, targetInfoset)
 
+    def clearMarginalizedUtility(self):
+        """
+        Clear the marginalized utility in the leaves.
+        """
+
+        if self.isLeaf():
+            self.marginalized_utility = 0
+        else:
+            for child in self.children:
+                child.clearMarginalizedUtility()
+
+    def marginalizePlayer(self, actionPlan, frequency, marginalized_player):
+        """
+        Propagate up to the leaves the frequency of an action plan, ignoring the actions
+        of the player to be marginalized (as he is the one for which we are searching a best reponse)
+        """
+
+        if self.isLeaf():
+            self.marginalized_utility += frequency * self.utility[marginalized_player]
+        elif self.player == marginalized_player:
+            for child in self.children:
+                child.marginalizePlayer(actionPlan, frequency, marginalized_player)
+        else:
+            self.children[actionPlan[self.information_set.id]].marginalizePlayer(actionPlan, frequency, marginalized_player)
+
+
 class CFRChanceNode(CFRNode):
     """
     Wrapper around an extensive-form chance node for holding additional CFR-related code and data.
@@ -411,6 +467,23 @@ class CFRChanceNode(CFRNode):
             res = res or child.isActionPlanLeadingToInfoset(actionPlan, targetInfoset)
         return res
 
+    def clearMarginalizedUtility(self):
+        """
+        Clear the marginalized utility in the leaves.
+        """
+
+        for child in self.children:
+            child.clearMarginalizedUtility()
+
+    def marginalizePlayer(self, actionPlan, frequency, marginalized_player):
+        """
+        Propagate up to the leaves the frequency of an action plan, ignoring the actions
+        of the player to be marginalized (as he is the one for which we are searching a best reponse)
+        """
+
+        for (p, child) in zip(self.distribution, self.children):
+            child.marginalizePlayer(actionPlan, frequency * p, marginalized_player)
+
 class CFRInformationSet:
     """
     Represents an information set and all the code and data related to it when used for the CFR algorithm.
@@ -491,6 +564,16 @@ class CFRInformationSet:
             if(r < count):
                 return i
 
+    def V(self):
+        v = [0 for a in range(self.action_count)]
+
+        for a in range(self.action_count):
+            v[a] += sum(map(lambda i: i.V(), self.children_infoset[a]))
+            v[a] += sum(map(lambda l: l.marginalized_utility, self.children_leaves[a]))
+
+        return max(v)
+
+    '''
     def V(self, joint, db = False):
         """
         Calculate the V value, that is the best value of utility attainable from this information set when deviating
@@ -546,6 +629,7 @@ class CFRInformationSet:
         self.cached_V = max(v)
 
         return self.cached_V
+    '''
 
     def getChildrenOfPlayer(self, player):
         """
