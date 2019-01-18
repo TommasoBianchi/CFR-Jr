@@ -97,6 +97,7 @@ if args.game == 'kuhn':
 	results_file.close()
 	old_data["total_duration"] = res['tot_time']
 	old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
+	old_data["utility"] = res['utility']
 	results_file = open(results_file_name, "w+")
 	results_file.write(json.dumps(old_data))
 	results_file.close()
@@ -122,6 +123,7 @@ if args.game == 'leduc':
 	results_file.close()
 	old_data["total_duration"] = res['tot_time']
 	old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
+	old_data["utility"] = res['utility']
 	results_file = open(results_file_name, "w+")
 	results_file.write(json.dumps(old_data))
 	results_file.close()
@@ -147,6 +149,7 @@ if args.game == 'goofspiel':
 	results_file.close()
 	old_data["total_duration"] = res['tot_time']
 	old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
+	old_data["utility"] = res['utility']
 	results_file = open(results_file_name, "w+")
 	results_file.write(json.dumps(old_data))
 	results_file.close()
