@@ -20,28 +20,27 @@ def build_goofspiel_tree(num_players, rank, tie_solver = TieSolver.Accumulate):
 
     hands = all_permutations(list(range(1, rank+1)))
     hand_probability = 1 / len(hands)
-    all_nodes = []
+    information_sets = {}
 
     for hand in hands:
-        n = tree.addNode(0, parent = root, probability = hand_probability, actionName = str(hand))
-        n.known_information = (0, hand[:1], [[] for p in range(num_players)])
-        all_nodes.append(n)
-        all_nodes += build_goofspiel_hand_tree(hand, [list(range(1, rank+1)) for p in range(num_players)],
-                                  [[] for p in range(num_players)], 0, 0, n, tree, tie_solver)
+        node_known_info = (0, 0, tuple(hand[:1]), tuple([() for p in range(num_players)]))
+        if node_known_info in information_sets:
+            information_set = information_sets[node_known_info]
+        else:
+            information_set = -1
 
-    # Merge nodes into infosets based on the available information at each node
-    for i1 in range(len(all_nodes)):
-        for i2 in range(i1+1, len(all_nodes)):
-            if(all_nodes[i1].player != all_nodes[i2].player or all_nodes[i1].isLeaf() or all_nodes[i2].isLeaf()):
-                continue
-            if(all_nodes[i1].known_information == all_nodes[i2].known_information):
-                iset_id = min(all_nodes[i1].information_set, all_nodes[i2].information_set)
-                all_nodes[i1].information_set = iset_id
-                all_nodes[i2].information_set = iset_id
+        n = tree.addNode(0, parent = root, probability = hand_probability, actionName = str(hand), information_set = information_set)
+
+        if information_set == -1:
+            information_sets[node_known_info] = n.information_set
+
+        build_goofspiel_hand_tree(hand, [list(range(1, rank+1)) for p in range(num_players)],
+                                  [[] for p in range(num_players)], 0, 0, n, tree, tie_solver, information_sets)
             
     return tree
 
-def build_goofspiel_hand_tree(hand, remaining_cards, played_cards, current_round, current_player, current_node, tree, tie_solver):
+def build_goofspiel_hand_tree(hand, remaining_cards, played_cards, current_round, current_player, current_node, tree, tie_solver,
+                              information_sets):
     """
     Recursively build the subtree for the Kuhn game where the hand is fixed.
     """
@@ -67,23 +66,28 @@ def build_goofspiel_hand_tree(hand, remaining_cards, played_cards, current_round
             l = tree.addLeaf(parent = current_node, utility = goofspiel_utility(hand, final_played_cards, tie_solver))
             remaining_cards[current_player].append(card)
             played_cards[current_player].remove(card)
-        return [l]
-
-    information_set = -1
-    nodes = []
+        return
 
     for card in current_player_cards:
         actionName = "p" + str(current_node.player) + "c" + str(card)
+
+        node_known_info = (next_player, next_round, tuple(hand[:next_round]), tuple([tuple(c[:next_round]) for c in played_cards]))
+        if node_known_info in information_sets:
+            information_set = information_sets[node_known_info]
+        else:
+            information_set = -1
+
         n = tree.addNode(next_player, information_set, parent = current_node, actionName = actionName)
-        n.known_information = (current_round, hand[:current_round+1], [c[:next_round] for c in played_cards])
-        nodes.append(n)
+
+        if information_set == -1:
+            information_sets[node_known_info] = n.information_set
+
         remaining_cards[current_player].remove(card)
         played_cards[current_player].append(card)
-        nodes += build_goofspiel_hand_tree(hand, remaining_cards, played_cards, next_round, next_player, n, tree, tie_solver)
+        build_goofspiel_hand_tree(hand, remaining_cards, played_cards, next_round, next_player, n, tree, tie_solver,
+                                           information_sets)
         remaining_cards[current_player].append(card)
         played_cards[current_player].remove(card)
-
-    return nodes
 
 def build_all_possible_hands(num_players, ranks):
     """

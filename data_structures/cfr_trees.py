@@ -55,6 +55,7 @@ class CFRTree:
 
         for iset in self.information_sets.values():
             seq = iset.sequence
+
             for n in iset.nodes:
                 if(n.base_node.getSequence(iset.player) != seq):
                     raise Exception("ERROR: This tree is not a game with perfect recall. Nodes of information set " + iset.id +
@@ -63,13 +64,9 @@ class CFRTree:
             # Setup children leaves and children infosets for this information set
             iset.children_infoset = []
             iset.children_leaves = []
-            leaves_set = set()
-            self.root.find_terminals(leaves_set)
             for a in range(iset.action_count):
-                seq  = iset.sequence.copy()
-                seq[iset.id] = a
-                iset.children_infoset.append(list(filter(lambda i: i.sequence == seq, self.infosets_by_player[iset.player])))
-                iset.children_leaves.append(list(filter(lambda l: l.base_node.getSequence(iset.player) == seq, leaves_set)))
+                iset.children_infoset.append(list(iset.getChildrenInformationSets(a)))
+                iset.children_leaves.append(list(iset.getChildrenLeaves(a)))
 
     def sampleActionPlan(self):
         """
@@ -347,6 +344,45 @@ class CFRNode:
         else:
             self.children[actionPlan[self.information_set.id]].marginalizePlayer(actionPlan, frequency, marginalized_player)
 
+    def getChildrenInformationSets(self, action, player):
+        """
+        Get all the information sets of the given player directly reachable (e.g. no other infoset of the same player in between)
+        by here when the given action was played in the parent information set of the given player.
+        """
+
+        if self.isLeaf():
+            return set()
+
+        if action < 0 and self.player == player:
+            return set([self.information_set])
+        
+        if self.player == player:
+            return self.children[action].getChildrenInformationSets(-1, player)
+        else:
+            res = set()
+            for child in self.children:
+                res.update(child.getChildrenInformationSets(action, player))
+            return res
+
+    def getChildrenLeaves(self, action, player):
+        """
+        Get all the leaves directly reachable (e.g. no other infoset of the same player in between)
+        by here when the given action was played in the parent information set of the given player.
+        """
+
+        if self.isLeaf():
+            return set([self])
+
+        if action < 0 and self.player == player:
+            return set()
+
+        if self.player == player:
+            return self.children[action].getChildrenLeaves(-1, player)
+        else:
+            res = set()
+            for child in self.children:
+                res.update(child.getChildrenLeaves(action, player))
+            return res
 
 class CFRChanceNode(CFRNode):
     """
@@ -644,6 +680,28 @@ class CFRInformationSet:
         if(self.player == player):
             children.add(self)
         return children
+
+    def getChildrenInformationSets(self, action):
+        """
+        Get all the information sets of the given player directly reachable (e.g. no other infoset of the same player in between)
+        by this one when the given action was played in the parent information set of the given player.
+        """
+        
+        res = set()
+        for node in self.nodes:
+            res.update(node.getChildrenInformationSets(action, self.player))
+        return res
+
+    def getChildrenLeaves(self, action):
+        """
+        Get all the leaves directly reachable (e.g. no other infoset of the same player in between)
+        by this information set when the given action was played in the parent information set of the given player.
+        """
+
+        res = set()
+        for node in self.nodes:
+            res.update(node.getChildrenLeaves(action, self.player))
+        return res
 
 class CFRJointStrategy:
     """
