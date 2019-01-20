@@ -112,6 +112,20 @@ class CFRTree:
 
         return epsilons
 
+    def checkMarginalsEpsilon(self):
+
+        epsilons = self.root.getExpectedUtility()
+
+        for p in range(self.numOfPlayers):
+            self.root.clearMarginalizedUtility()
+            self.root.marginalizePlayerFromBehaviourals(1, p)
+
+            root_infosets = list(filter(lambda i: i.sequence == {}, self.infosets_by_player[p]))
+
+            epsilons[p] -= sum(map(lambda i: i.V(), root_infosets))
+
+        return epsilons
+
     '''
     def checkEquilibrium(self, joint):
         """
@@ -333,7 +347,7 @@ class CFRNode:
     def marginalizePlayer(self, actionPlan, frequency, marginalized_player):
         """
         Propagate up to the leaves the frequency of an action plan, ignoring the actions
-        of the player to be marginalized (as he is the one for which we are searching a best reponse)
+        of the player to be marginalized (as he is the one for which we are searching a best reponse).
         """
 
         if self.isLeaf():
@@ -343,6 +357,22 @@ class CFRNode:
                 child.marginalizePlayer(actionPlan, frequency, marginalized_player)
         else:
             self.children[actionPlan[self.information_set.id]].marginalizePlayer(actionPlan, frequency, marginalized_player)
+
+    def marginalizePlayerFromBehaviourals(self, p, marginalized_player):
+        """
+        Propagate up to the leaves the current average behavioural strategies, ignoring the actions
+        of the player to be marginalized (as he is the one for which we are searching a best reponse).
+        """
+
+        if self.isLeaf():
+            self.marginalized_utility += p * self.utility[marginalized_player]
+        elif self.player == marginalized_player:
+            for child in self.children:
+                child.marginalizePlayerFromBehaviourals(p, marginalized_player)
+        else:
+            s = self.distribution if self.isChance() else self.information_set.getAverageStrategy()
+            for a in range(len(self.children)):
+                self.children[a].marginalizePlayerFromBehaviourals(p * s[a], marginalized_player)
 
     def getChildrenInformationSets(self, action, player):
         """
@@ -383,6 +413,28 @@ class CFRNode:
             for child in self.children:
                 res.update(child.getChildrenLeaves(action, player))
             return res
+
+    def getExpectedUtility(self):
+        """
+        Get the expected utility from this node on under the current average behavioural strategies.
+        """
+
+        if self.isLeaf():
+            return self.utility
+
+        u = None
+        s = self.distribution if self.isChance() else self.information_set.getAverageStrategy()
+
+        for a in range(len(self.children)):
+            child_u = self.children[a].getExpectedUtility()
+
+            if u == None:
+                u = [cu * s[a] for cu in child_u]
+            else:
+                for p in range(len(child_u)):
+                    u[p] += child_u[p] * s[a]
+
+        return u
 
 class CFRChanceNode(CFRNode):
     """
