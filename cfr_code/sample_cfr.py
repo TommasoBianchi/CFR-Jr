@@ -106,7 +106,8 @@ def SolveWithSampleCFR(cfr_tree, iterations, perc = 10, show_perc = False, check
                     'relative_joint_size': jointStrategy.frequencyCount / t,
                     'max_plan_frequency': max(jointStrategy.plans.values()),
                     'iteration_number': t,
-                    'duration': time.time() - last_checkpoint_time}
+                    'duration': time.time() - last_checkpoint_time,
+                    'utility': cfr_tree.getUtility(jointStrategy)}
             graph_data.append(data)
 
             if(check_callback != None):
