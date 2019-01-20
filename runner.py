@@ -25,7 +25,8 @@ parser.add_argument('--bootstrap_iterations', '-bt', type=int, default=0, help='
 parser.add_argument('--check_every_iteration', '-ct', type=int, default=-1, help='every how many iteration to check the epsilon')
 parser.add_argument('--bound_joint_size', '-bjs', const=True, nargs='?', help='bound or not the limit of the resulting joint strategy')
 
-parser.add_argument('--logfile', '-log', type=str, default=(str(int(time.time())) + "log.log"))
+parser.add_argument('--logfile', '-log', type=str, default=(str(int(time.time())) + "log.log"), help='file in which to log events and errors')
+parser.add_argument('--results', '-res', type=str, default='results/', help='folder where to put the results (must contain subfolders for each game')
 
 args = parser.parse_args()
 parameters_dict = vars(args)
@@ -43,6 +44,7 @@ check_every_iteration = args.check_every_iteration
 bound_joint_size = args.bound_joint_size != None
 
 log_file_name = args.logfile
+results_directory = args.results
 
 def log_line(string):
 	log_file = open(log_file_name, "a")
@@ -81,7 +83,7 @@ if args.game == 'kuhn':
 	log_line("Built a kuhn tree with parameters: " + str(parameters_dict))
 	cfr_tree = CFRTree(kuhn_tree)
 	
-	results_file_name = "results/kuhn/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank)
+	results_file_name = results_directory + "kuhn/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank)
 	results_file = open(results_file_name, "w+")
 	results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
 	results_file.close()
@@ -107,7 +109,7 @@ if args.game == 'leduc':
 	log_line("Built a leduc tree with parameters: " + str(parameters_dict))
 	cfr_tree = CFRTree(leduc_tree)
 
-	results_file_name = "results/leduc/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(num_of_suits) + "_" + str(rank)
+	results_file_name = results_directory + "leduc/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(num_of_suits) + "_" + str(rank)
 	results_file = open(results_file_name, "w+")
 	results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
 	results_file.close()
@@ -133,7 +135,7 @@ if args.game == 'goofspiel':
 	log_line("Built a goofspiel tree with parameters: " + str(parameters_dict))
 	cfr_tree = CFRTree(goofspiel_tree)
 
-	results_file_name = "results/goofspiel/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank)
+	results_file_name = results_directory + "goofspiel/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank)
 	results_file = open(results_file_name, "w+")
 	results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
 	results_file.close()
