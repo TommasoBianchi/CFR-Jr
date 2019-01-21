@@ -78,5 +78,7 @@ def SolveWithCFR(cfr_tree, iterations, perc = 10, show_perc = False, checkEveryI
 
             if(check_callback != None):
                 check_callback(data)
+                
+            last_checkpoint_time = time.time()
         
     return {'utility': u, 'graph_data': graph_data, 'tot_time': time.time() - start_time}
