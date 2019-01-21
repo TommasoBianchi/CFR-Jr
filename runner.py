@@ -4,6 +4,7 @@ from games.goofspiel import build_goofspiel_tree, TieSolver
 
 from data_structures.cfr_trees import CFRTree
 from cfr_code.sample_cfr import SolveWithSampleCFR
+from cfr_code.cfr import SolveWithCFR
 
 import time
 import json
@@ -24,6 +25,8 @@ parser.add_argument('--number_iterations', '-t', type=int, default=100000, help=
 parser.add_argument('--bootstrap_iterations', '-bt', type=int, default=0, help='number of iterations to run without sampling')
 parser.add_argument('--check_every_iteration', '-ct', type=int, default=-1, help='every how many iteration to check the epsilon')
 parser.add_argument('--bound_joint_size', '-bjs', const=True, nargs='?', help='bound or not the limit of the resulting joint strategy')
+
+parser.add_argument('--algorithm', '-a', type=str, default='scfr', choices=['scfr', 'cfr', 'cfr+'], help='algorithm to be used')
 
 parser.add_argument('--logfile', '-log', type=str, default=(str(int(time.time())) + "log.log"), help='file in which to log events and errors')
 parser.add_argument('--results', '-res', type=str, default='results/', help='folder where to put the results (must contain subfolders for each game')
@@ -63,6 +66,15 @@ def log_result_point_callback(results_file_name):
 		results_file.close()
 	return __callback
 
+def solve_function(cfr_tree):
+	if args.algorithm == 'scfr':
+		return SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
+							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size,
+							 check_callback = log_result_point_callback(results_file_name))
+	if args.algorithm == 'cfr' or args.algorithm == 'cfr+':
+		return SolveWithCFR(cfr_tree, number_iterations, checkEveryIteration = check_every_iteration,
+							check_callback = log_result_point_callback(results_file_name), use_cfr_plus = args.algorithm == 'cfr+')
+
 # ----------------------------------------
 # Install handler to detect crashes
 # ----------------------------------------
@@ -88,10 +100,8 @@ if args.game == 'kuhn':
 	results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
 	results_file.close()
 
-	res = SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
-							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size,
-							 check_callback = log_result_point_callback(results_file_name))
-	log_line("Finished solving.")
+	res = solve_function(cfr_tree)
+	log_line("Finished solving with " + args.algorithm + ".")
 	log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
 	
 	results_file = open(results_file_name, "r")
@@ -114,10 +124,8 @@ if args.game == 'leduc':
 	results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
 	results_file.close()
 
-	res = SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
-							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size,
-							 check_callback = log_result_point_callback(results_file_name))
-	log_line("Finished solving.")
+	res = solve_function(cfr_tree)
+	log_line("Finished solving with " + args.algorithm + ".")
 	log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
 	
 	results_file = open(results_file_name, "r")
@@ -140,10 +148,8 @@ if args.game == 'goofspiel':
 	results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
 	results_file.close()
 
-	res = SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
-							 checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size,
-							 check_callback = log_result_point_callback(results_file_name))
-	log_line("Finished solving.")
+	res = solve_function(cfr_tree)
+	log_line("Finished solving with " + args.algorithm + ".")
 	log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
 
 	results_file = open(results_file_name, "r")
