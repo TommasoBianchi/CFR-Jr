@@ -226,6 +226,8 @@ repeat{
     let time_phase1 := time() - time_phase1;
     let time_phase2 := time();
 
+    printf "******** time PH1=%d \n", time_phase1;
+
     if aux_obj > 1e-06 then {
       printf "aux_obj = %f: Phase II problem *apparenty* infeasible; halting\n", aux_obj;
       break;
