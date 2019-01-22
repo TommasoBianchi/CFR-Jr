@@ -21,6 +21,7 @@ option solver gurobi;
 # option solver_msg 0; # turn off solver messages
 # option gurobi_options "quad=1 feastol=1e-09";
 option gurobi_options "outlev=1"; #write Gurobi log lines to stdout (default 0)
+option gurobi_options "threads=4";
 
 # COMPUTING A FEASIBLE solution (PHASE I)
 problem master_phase1: aux_obj, c11_phase1, c12_phase1, c13_phase1, c21_phase1, c22_phase1, c23_phase1, c3_phase1,sigma, v1, v2, v3, aux_c11, aux_c12, aux_c13, slack_c21, slack_c22, slack_c23, aux_c3;
