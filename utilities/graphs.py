@@ -12,6 +12,20 @@ def epsilon_graph(results):
 	plt.xlabel("Iteration")
 	plt.show()
 
+def comparative_epsilon_graph(results_array):
+	"""
+	Draw graph for the epsilons from the data obtained from multiple runs of SCFR in a single graph.
+	"""
+
+	for res in results_array:
+		iteration_counts = list(map(lambda el: el['iteration_number'], res['graph_data']))
+		epsilons_graph = list(map(lambda el: max(0, -min(el['epsilon'])), res['graph_data']))
+		plt.plot(iteration_counts, epsilons_graph)
+	plt.ylabel("Epsilon")
+	plt.xlabel("Iteration")
+	plt.legend(["Result " + str(i+1) for i in range(len(results_array))])
+	plt.show()
+
 def graphs_from_cfr_results(results):
 	"""
 	Draw graphs from the data obtained from a run of SCFR.

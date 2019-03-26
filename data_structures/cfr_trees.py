@@ -131,18 +131,21 @@ class CFRTree:
         leaves = set()
         self.root.find_terminals(leaves)
 
+        all_players_plan_distributions = []
+
         for p in range(self.numOfPlayers):
             self.root.buildRealizationForm(p, 1)
-            plans = []
+            player_plan_distribution = []
 
             nonZeroLeaf = True
             i = 0
             while nonZeroLeaf and i < 10:
-                for l in leaves:
-                    print((l, l.base_node.getSequence(p), l.omega))
-                print("---------------------------")
+                # for l in leaves:
+                #     print((l.id, l.base_node.getSequence(p), l.omega))
 
-                best_plan_value = -1
+                best_plan = None
+                best_plan_value = 0
+                best_plan_leaf = None
 
                 for l in leaves:
                     if l.omega == 0:
@@ -154,22 +157,45 @@ class CFRTree:
                         best_plan_value = val
                         best_plan_leaf = l
 
+                # print("Built plan for leaf " + str(best_plan_leaf.id) + " with value " + str(best_plan_value))
+                # print("Plan = " + str(best_plan))
+                # print("Terminals reached by plan: " + reduce(lambda acc, el: acc + " " + str(el.id), 
+                #                                              self.root.terminalsUnderPlan(p, best_plan), ""))
+
+                if best_plan == None:
+                    for l in leaves:
+                        print((l.id, l.base_node.getSequence(p), l.omega))
+                    raise Exception("ERROR")
+
                 for t in self.root.terminalsUnderPlan(p, best_plan):
                     t.omega -= best_plan_value
-
-                print("Built plan for leaf " + str((l, l.omega)))
-                plans.append((best_plan, best_plan_value))
 
                 i += 1
                 nonZeroLeaf = False
                 for l in leaves:
-                    if l.omega > 0:
+                    if l.omega > 0.001:
                         nonZeroLeaf = True
                         break
 
-            return plans
+                player_plan_distribution.append((best_plan, best_plan_value))
 
-            # TODO: merge plans of all players into a single joint distribution (cross product)
+                # print("---------------------------")
+
+            all_players_plan_distributions.append(player_plan_distribution)
+
+        # Merge plans of all players into a single joint distribution (cross product)
+        joint_distribution = all_players_plan_distributions[0]
+
+        for p in range(1, self.numOfPlayers):
+            new_joint_distribution = []
+            for j in joint_distribution:
+                for d in all_players_plan_distributions[p]:
+                    joint_plan = {**j[0], **d[0]}
+                    joint_probability = j[1] * d[1]
+                    new_joint_distribution.append((joint_plan, joint_probability))
+            joint_distribution = new_joint_distribution
+
+        return joint_distribution
 
     def builSupportingPlan(self, leaf, targetPlayer):
         # TODO: implement also the "targetPlayer == None" case
@@ -188,6 +214,8 @@ class CFRTree:
             (a, w) = iset.supportingPlanInfo
             plan[iset.id] = a
             weight = min(weight, w)
+
+        weight = min(self.root.terminalsUnderPlan(targetPlayer, plan), key = lambda t: t.omega).omega
 
         return (plan, weight)
 
@@ -804,19 +832,20 @@ class CFRJointStrategy:
 
         CFRJointStrategy.action_plans_cache = {}
 
-    def addActionPlan(self, actionPlan):
+    def addActionPlan(self, actionPlan, weight = 1):
         """
         Add an action plan (a dictionary from information set id to action) to the joint strategy.
+        Optionally a weight can be provided, to insert non-uniformly sampled plans.
         """
 
         string = CFRJointStrategy.actionPlanToString(actionPlan)
 
         if(string in self.plans):
-            self.plans[string] += 1
-            self.frequencyCount += 1
+            self.plans[string] += weight
+            self.frequencyCount += weight
         elif(self.maxPlanCount == -1 or len(self.plans) < self.maxPlanCount):
-            self.plans[string] = 1
-            self.frequencyCount += 1
+            self.plans[string] = weight
+            self.frequencyCount += weight
         else:
             # Remove the least frequent plan
             plan = min(self.plans, key = lambda p: self.plans[p])
@@ -824,8 +853,16 @@ class CFRJointStrategy:
             del self.plans[plan]
 
             # Add the new one
-            self.plans[string] = 1
-            self.frequencyCount += 1
+            self.plans[string] = weight
+            self.frequencyCount += weight
+
+    def addJointDistribution(self, jointDistribution):
+        """
+
+        """
+
+        for (plan, prob) in jointDistribution:
+            self.addActionPlan(plan, prob)
 
     def actionPlanToString(actionPlan):
         """

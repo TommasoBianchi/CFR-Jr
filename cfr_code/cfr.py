@@ -1,4 +1,3 @@
-from data_structures.cfr_trees import CFRJointStrategy
 from functools import reduce
 import time
 
