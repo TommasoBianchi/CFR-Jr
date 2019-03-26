@@ -126,44 +126,37 @@ class CFRTree:
 
         return epsilons
 
-    '''
-    def checkEquilibrium(self, joint):
-        """
-        Given a joint strategy, calculate for which value of epsilon it is an epsilon-NFCCE.
-        The epsilon are obtained as utility attained following the recommendations minus best utility if deviating, thus a
-        positive value means the constraint are satisfied, while a negative value mean we are not at the equilibium yet.
-        """
+    def buildJointFromMarginals(self):
 
-        for iset in self.information_sets.values():
-            iset.cached_V = None
-
-        utility = self.getUtility(joint)
+        leaves = set()
+        self.root.find_terminals(leaves)
 
         for p in range(self.numOfPlayers):
-            root_infosets = list(filter(lambda i: i.player == p and i.sequence == {}, self.information_sets.values()))
+            self.root.buildRealizationForm(p, 1)
+            plans = []
 
-            # If there are no root information sets, it means that player p has no information sets
-            # at all, so the equilibrium constraints are checked by default
-            if(len(root_infosets) == 0):
-                continue
+            nonZeroLeaf = True
+            while nonZeroLeaf:
+                best_plan_value = -1
 
-            # If the root is a chance node, take it into consideration
-            # TODO: make more generic
-            if(self.root.isChance()):
-                root = self.root
-                def map_lambda(i):
-                    probability = 0
-                    for n in i.nodes:
-                        probability += root.distribution[root.base_node.getActionLeadingToNode(n.base_node)]
-                    return i.V(joint) * probability
-                cum_v = sum(map(map_lambda, root_infosets))
-            else:
-                cum_v = reduce(lambda acc, i: acc + i.V(joint), root_infosets, 0)
+                for l in leaves:
+                    (plan, val) = l.builSupportingPlan(p)
+                    if val > best_plan_value:
+                        best_plan = plan
+                        best_plan_value = val
 
-            utility[p] -= cum_v
+                for t in self.root.terminalsUnderPlan(best_plan):
+                    t.omega -= best_plan_value
 
-        return utility
-        '''
+                plans.add((best_plan, best_plan_value))
+
+                nonZeroLeaf = False
+                for l in leaves:
+                    if l.omega > 0:
+                        nonZeroLeaf = True
+                        break
+
+            # TODO: merge plans of all players into a single joint distribution (cross product)
 
 class CFRNode:
     """
@@ -313,7 +306,24 @@ class CFRNode:
                 self.children[a].computeReachability(actionPlan, pi)
                 pi[self.player] = old_pi
 
+    def buildRealizationForm(self, targetPlayer, p):
+        """
+        Builds the realization form, i.e. a distribution over the leaves of the tree that is
+        equivalent to the current marginal strategy of targetPlayer.
+        """
 
+        if self.isLeaf():
+            self.omega = p
+            return
+
+        if self.player != targetPlayer:
+            for node in self.children:
+                node.buildRealizationForm(targetPlayer, p)
+            return
+
+        for a in range(len(self.children)):
+            a_prob = self.information_set.current_strategy[a]
+            self.children[a].buildRealizationForm(targetPlayer, p * a_prob)
 
     def isActionPlanLeadingToInfoset(self, actionPlan, targetInfoset):
         """
@@ -474,6 +484,15 @@ class CFRChanceNode(CFRNode):
 
         for a in range(len(self.children)):
             self.children[a].computeReachability(actionPlan, pi)
+
+    def buildRealizationForm(self, targetPlayer, p):
+        """
+        Builds the realization form, i.e. a distribution over the leaves of the tree that is
+        equivalent to the current marginal strategy of targetPlayer.
+        """
+
+        for a in range(len(self.children)):
+            self.children[a].buildRealizationForm(targetPlayer, p * self.distribution[a])
 
     def utilityFromActionPlan(self, actionPlan, default = None):
         """
@@ -660,64 +679,6 @@ class CFRInformationSet:
             v[a] += sum(map(lambda l: l.marginalized_utility, self.children_leaves[a]))
 
         return max(v)
-
-    '''
-    def V(self, joint, db = False):
-        """
-        Calculate the V value, that is the best value of utility attainable from this information set when deviating
-        from a given joint strategy.
-        It is used for calculate the epsilon value of equilibria.
-        """
-
-        if(self.cached_V != None):
-            return self.cached_V
-
-        v = [0] * self.action_count
-
-        this_player_infosets = self.cfr_tree.infosets_by_player[self.player]
-
-        sequence = self.sequence.copy()
-        modification_sequence = self.sequence.copy()
-
-        # Delete from actionPlan all the actions by the current player
-        for iset in this_player_infosets:
-            if(iset.id not in sequence):
-                modification_sequence[iset.id] = -1
-
-        for a in range(self.action_count):
-            sequence[self.id] = a
-            modification_sequence[self.id] = a
-
-            children = list(filter(lambda iset: iset.sequence == sequence, this_player_infosets))
-
-            # "Leaves" part of the sum
-            # TODO: optimize this loop, it is too much to loop over all plans in the joint
-            for actionPlanString in joint.plans:
-                actionPlan = CFRJointStrategy.stringToActionPlan(actionPlanString)
-
-                updatedPlan = actionPlan.copy()
-                updatedPlan.update(modification_sequence)
-                if(not self.cfr_tree.root.isActionPlanLeadingToInfoset(updatedPlan, self)):
-                    continue
-
-                frequency = joint.plans[actionPlanString] / joint.frequencyCount
-
-                for n in self.nodes:
-                    #u = n.children[a].utilityFromActionPlan(actionPlan, default = [0] * self.cfr_tree.numOfPlayers)
-                    u = n.utilityFromModifiedActionPlan(actionPlan, modification_sequence, default = [0] * self.cfr_tree.numOfPlayers)
-
-                    if(u != None):
-                        p = self.cfr_tree.root.distribution[self.cfr_tree.root.base_node.getActionLeadingToNode(n.base_node)]
-                        v[a] += frequency * u[self.player] * p
-
-            # "Recursive" part of the sum
-            for child in children:
-                v[a] += child.V(joint)
-
-        self.cached_V = max(v)
-
-        return self.cached_V
-    '''
 
     def getChildrenOfPlayer(self, player):
         """
