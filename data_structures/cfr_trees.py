@@ -136,27 +136,60 @@ class CFRTree:
             plans = []
 
             nonZeroLeaf = True
-            while nonZeroLeaf:
+            i = 0
+            while nonZeroLeaf and i < 10:
+                for l in leaves:
+                    print((l, l.base_node.getSequence(p), l.omega))
+                print("---------------------------")
+
                 best_plan_value = -1
 
                 for l in leaves:
-                    (plan, val) = l.builSupportingPlan(p)
+                    if l.omega == 0:
+                        continue
+
+                    (plan, val) = self.builSupportingPlan(l, p)
                     if val > best_plan_value:
                         best_plan = plan
                         best_plan_value = val
+                        best_plan_leaf = l
 
-                for t in self.root.terminalsUnderPlan(best_plan):
+                for t in self.root.terminalsUnderPlan(p, best_plan):
                     t.omega -= best_plan_value
 
-                plans.add((best_plan, best_plan_value))
+                print("Built plan for leaf " + str((l, l.omega)))
+                plans.append((best_plan, best_plan_value))
 
+                i += 1
                 nonZeroLeaf = False
                 for l in leaves:
                     if l.omega > 0:
                         nonZeroLeaf = True
                         break
 
+            return plans
+
             # TODO: merge plans of all players into a single joint distribution (cross product)
+
+    def builSupportingPlan(self, leaf, targetPlayer):
+        # TODO: implement also the "targetPlayer == None" case
+
+        for iset in self.infosets_by_player[targetPlayer]:
+            iset.supportingPlanInfo = None   
+
+        plan = leaf.base_node.getSequence(targetPlayer)
+        weight = leaf.omega
+
+        for (iset_id, action) in plan.items():
+            self.information_sets[iset_id].supportingPlanInfo = (action, leaf.omega)
+
+        for iset in self.infosets_by_player[targetPlayer]:
+            iset.updateSupportingPlan(targetPlayer)
+            (a, w) = iset.supportingPlanInfo
+            plan[iset.id] = a
+            weight = min(weight, w)
+
+        return (plan, weight)
 
 class CFRNode:
     """
@@ -324,6 +357,21 @@ class CFRNode:
         for a in range(len(self.children)):
             a_prob = self.information_set.current_strategy[a]
             self.children[a].buildRealizationForm(targetPlayer, p * a_prob)
+
+    def terminalsUnderPlan(self, targetPlayer, plan):
+        if self.isLeaf():
+            return [ self ]
+
+        terminals = []
+
+        if targetPlayer == None or self.player == targetPlayer:
+            action = plan[self.information_set.id]
+            terminals = self.children[action].terminalsUnderPlan(targetPlayer, plan)
+        else:
+            for node in self.children:
+                terminals += node.terminalsUnderPlan(targetPlayer, plan)
+
+        return terminals
 
     def isActionPlanLeadingToInfoset(self, actionPlan, targetInfoset):
         """
@@ -715,6 +763,29 @@ class CFRInformationSet:
         for node in self.nodes:
             res.update(node.getChildrenLeaves(action, self.player))
         return res
+
+    def updateSupportingPlan(self, targetPlayer):
+        # TODO: implement also the "targetPlayer == None" case    
+
+        if self.supportingPlanInfo != None:
+            return    
+
+        action = -1
+
+        for a in range(self.action_count):
+            a_omega = 1
+            for iset in self.children_infoset[a]:
+                iset.updateSupportingPlan(targetPlayer)
+                (_, w) = iset.supportingPlanInfo
+                a_omega = min(a_omega, w)
+            for leaf in self.children_leaves[a]:
+                a_omega = min(a_omega, leaf.omega)
+
+            if action == -1 or a_omega > omega:
+                action = a
+                omega = a_omega
+
+        self.supportingPlanInfo = (action, omega)
 
 class CFRJointStrategy:
     """
