@@ -10,6 +10,7 @@ def epsilon_graph(results):
 	plt.plot(iteration_counts, epsilons_graph)
 	plt.ylabel("Epsilon")
 	plt.xlabel("Iteration")
+	plt.ylim(bottom = -0.5)
 	plt.show()
 
 def comparative_epsilon_graph(results_array):
@@ -24,6 +25,7 @@ def comparative_epsilon_graph(results_array):
 	plt.ylabel("Epsilon")
 	plt.xlabel("Iteration")
 	plt.legend(["Result " + str(i+1) for i in range(len(results_array))])
+	plt.ylim(bottom = -0.5)
 	plt.show()
 
 def graphs_from_cfr_results(results):
