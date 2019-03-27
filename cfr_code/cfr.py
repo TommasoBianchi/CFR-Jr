@@ -24,23 +24,27 @@ def CFR(node, player, pi, use_cfr_plus = False):
     
     for a in range(len(node.children)):
         
-        old_pi = pi[player]
-        pi[player] *= iset.current_strategy[a]
+        old_pi = pi[iset.player]
+        pi[iset.player] *= iset.current_strategy[a]
         v_alt[a] = CFR(node.children[a], player, pi)        
-        pi[player] = old_pi
+        pi[iset.player] = old_pi
             
         v += v_alt[a] * iset.current_strategy[a]
     
     if(iset.player == player):
+        pi_other = 1
+        for i in range(len(pi)):
+            if(i != player):
+                pi_other *= pi[i]
+
         for a in range(len(node.children)):
             if use_cfr_plus:
-                iset.cumulative_regret[a] += pi[player] * max(0, (v_alt[a] - v)) # CFR+
+                #iset.cumulative_regret[a] += pi[player] * max(0, (v_alt[a] - v)) # CFR+
+                iset.cumulative_regret[a] = max(iset.cumulative_regret[a] + pi_other * (v_alt[a] - v), 0)
             else:
-                iset.cumulative_regret[a] += pi[player] * (v_alt[a] - v)
+                #iset.cumulative_regret[a] += pi[player] * (v_alt[a] - v)
+                iset.cumulative_regret[a] += pi_other * (v_alt[a] - v)
             iset.cumulative_strategy[a] += pi[player] * iset.current_strategy[a]
-         
-        # This should not happen until every player has run CFR
-        #iset.updateCurrentStrategy()
     
     return v
 
