@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-def epsilon_graph(results):
+def epsilon_graph(results, ybottom = 0):
 	"""
 	Draw graph for the epsilon from the data obtained from a run of SCFR.
 	"""
@@ -10,10 +10,10 @@ def epsilon_graph(results):
 	plt.plot(iteration_counts, epsilons_graph)
 	plt.ylabel("Epsilon")
 	plt.xlabel("Iteration")
-	plt.ylim(bottom = -0.5)
+	plt.ylim(bottom = ybottom)
 	plt.show()
 
-def comparative_epsilon_graph(results_array):
+def comparative_epsilon_graph(results_array, ybottom = 0):
 	"""
 	Draw graph for the epsilons from the data obtained from multiple runs of SCFR in a single graph.
 	"""
@@ -25,7 +25,7 @@ def comparative_epsilon_graph(results_array):
 	plt.ylabel("Epsilon")
 	plt.xlabel("Iteration")
 	plt.legend(["Result " + str(i+1) for i in range(len(results_array))])
-	plt.ylim(bottom = -0.5)
+	plt.ylim(bottom = ybottom)
 	plt.show()
 
 def graphs_from_cfr_results(results):

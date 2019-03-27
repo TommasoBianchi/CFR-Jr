@@ -146,7 +146,7 @@ class Node:
 
         if(self.parent == None):
             return {}
-        if(self.parent.player != player):
+        if(self.parent.player != player and player != None):
             return self.parent.getSequence(player)
         
         sequence = self.parent.getSequence(player) 

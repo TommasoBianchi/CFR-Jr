@@ -198,9 +198,13 @@ class CFRTree:
         return joint_distribution
 
     def builSupportingPlan(self, leaf, targetPlayer):
-        # TODO: implement also the "targetPlayer == None" case
 
-        for iset in self.infosets_by_player[targetPlayer]:
+        if targetPlayer != None:
+            player_infosets = self.infosets_by_player[targetPlayer]
+        else:
+            player_infosets = list(self.information_sets.values())
+
+        for iset in player_infosets:
             iset.supportingPlanInfo = None   
 
         plan = leaf.base_node.getSequence(targetPlayer)
@@ -209,7 +213,7 @@ class CFRTree:
         for (iset_id, action) in plan.items():
             self.information_sets[iset_id].supportingPlanInfo = (action, leaf.omega)
 
-        for iset in self.infosets_by_player[targetPlayer]:
+        for iset in player_infosets:
             iset.updateSupportingPlan(targetPlayer)
             (a, w) = iset.supportingPlanInfo
             plan[iset.id] = a
