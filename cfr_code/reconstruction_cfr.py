@@ -16,7 +16,7 @@ def SolveWithReconstructionCFR(cfr_tree, iterations, perc = 10, show_perc = Fals
 
     player_count = cfr_tree.numOfPlayers
 
-    for i in range(iterations - 1):
+    for i in range(iterations):
         if(show_perc and (i+1) % (iterations / 100 * perc) == 0):
             print(str((i+1) / (iterations / 100 * perc) * perc) + "%")
             
