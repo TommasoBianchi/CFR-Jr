@@ -6,6 +6,7 @@ from data_structures.trees import randomTree
 from data_structures.cfr_trees import CFRTree
 from cfr_code.sample_cfr import SolveWithSampleCFR
 from cfr_code.cfr import SolveWithCFR
+from cfr_code.reconstruction_cfr import SolveWithReconstructionCFR
 from utilities.serialization import tree_to_colgen_dat_file
 
 import time
@@ -28,10 +29,11 @@ parser.add_argument('--iset_probability', '-ip', type=float, default=1, help='in
 
 parser.add_argument('--number_iterations', '-t', type=int, default=100000, help='number of iterations to run')
 parser.add_argument('--bootstrap_iterations', '-bt', type=int, default=0, help='number of iterations to run without sampling')
-parser.add_argument('--check_every_iteration', '-ct', type=int, default=-1, help='every how many iteration to check the epsilon')
+parser.add_argument('--check_every_iteration', '-ct', type=int, default=-1, help='every how many iterations to check the epsilon')
 parser.add_argument('--bound_joint_size', '-bjs', const=True, nargs='?', help='bound or not the limit of the resulting joint strategy')
+parser.add_argument('--reconstruct_every_iteration', '-rei', type=int, default=1, help='every how many iterations to reconstruct a joint from the marginals')
 
-parser.add_argument('--algorithm', '-a', type=str, default='scfr', choices=['scfr', 'cfr', 'cfr+'], help='algorithm to be used')
+parser.add_argument('--algorithm', '-a', type=str, default='scfr', choices=['scfr', 'cfr', 'cfr+', 'rcfr'], help='algorithm to be used')
 
 parser.add_argument('--logfile', '-log', type=str, default=(str(int(time.time())) + "log.log"), help='file in which to log events and errors')
 parser.add_argument('--results', '-res', type=str, default='results/', help='folder where to put the results (must contain subfolders for each game')
@@ -50,6 +52,7 @@ number_iterations = args.number_iterations
 bootstrap_iterations = args.bootstrap_iterations
 check_every_iteration = args.check_every_iteration
 bound_joint_size = args.bound_joint_size != None
+reconstructEveryIteration = args.reconstruct_every_iteration
 
 log_file_name = args.logfile
 results_directory = args.results
@@ -79,6 +82,10 @@ def solve_function(cfr_tree):
     if args.algorithm == 'cfr' or args.algorithm == 'cfr+':
         return SolveWithCFR(cfr_tree, number_iterations, checkEveryIteration = check_every_iteration,
                             check_callback = log_result_point_callback(results_file_name), use_cfr_plus = args.algorithm == 'cfr+')
+    if args.algorithm == 'rcfr':
+        return SolveWithReconstructionCFR(cfr_tree, number_iterations, checkEveryIteration = check_every_iteration,
+                                          reconstructEveryIteration = reconstructEveryIteration,
+                                          check_callback = log_result_point_callback(results_file_name))
 
 # ----------------------------------------
 # Install handler to detect crashes
