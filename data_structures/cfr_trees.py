@@ -157,11 +157,6 @@ class CFRTree:
                         best_plan_value = val
                         best_plan_leaf = l
 
-                # print("Built plan for leaf " + str(best_plan_leaf.id) + " with value " + str(best_plan_value))
-                # print("Plan = " + str(best_plan))
-                # print("Terminals reached by plan: " + reduce(lambda acc, el: acc + " " + str(el.id), 
-                #                                              self.root.terminalsUnderPlan(p, best_plan), ""))
-
                 if best_plan == None:
                     for l in leaves:
                         print((l.id, l.base_node.getSequence(p), l.omega))
@@ -179,8 +174,6 @@ class CFRTree:
 
                 player_plan_distribution.append((best_plan, best_plan_value))
 
-                # print("---------------------------")
-
             all_players_plan_distributions.append(player_plan_distribution)
 
         # Merge plans of all players into a single joint distribution (cross product)
@@ -196,6 +189,51 @@ class CFRTree:
             joint_distribution = new_joint_distribution
 
         return joint_distribution
+
+    def buildJointFromMarginals_AllPlayersTogether(self):
+
+        leaves = set()
+        self.root.find_terminals(leaves)
+
+        self.root.buildRealizationForm(None, 1)
+        plan_distribution = []
+
+        nonZeroLeaf = True
+        i = 0
+        while nonZeroLeaf and i < 10:
+
+            best_plan = None
+            best_plan_value = 0
+            best_plan_leaf = None
+
+            for l in leaves:
+                if l.omega == 0:
+                    continue
+
+                (plan, val) = self.builSupportingPlan(l, None)
+                if val > best_plan_value:
+                    best_plan = plan
+                    best_plan_value = val
+                    best_plan_leaf = l
+
+            if best_plan == None:
+                for l in leaves:
+                    print((l.id, l.base_node.getSequence(None), l.omega))
+                raise Exception("ERROR")
+
+            for t in self.root.terminalsUnderPlan(None, best_plan):
+                t.omega -= best_plan_value
+
+            i += 1
+            nonZeroLeaf = False
+            for l in leaves:
+                if l.omega > 0.001:
+                    nonZeroLeaf = True
+                    break
+
+            plan_distribution.append((best_plan, best_plan_value))
+
+        return plan_distribution
 
     def builSupportingPlan(self, leaf, targetPlayer):
 
@@ -381,7 +419,7 @@ class CFRNode:
             self.omega = p
             return
 
-        if self.player != targetPlayer:
+        if self.player != targetPlayer and targetPlayer != None:
             for node in self.children:
                 node.buildRealizationForm(targetPlayer, p)
             return
@@ -572,7 +610,7 @@ class CFRChanceNode(CFRNode):
         """
 
         for a in range(len(self.children)):
-            self.children[a].buildRealizationForm(targetPlayer, p * self.distribution[a])
+            self.children[a].buildRealizationForm(targetPlayer, p)  # Do not factorize chance in
 
     def utilityFromActionPlan(self, actionPlan, default = None):
         """
@@ -797,20 +835,37 @@ class CFRInformationSet:
         return res
 
     def updateSupportingPlan(self, targetPlayer):
-        # TODO: implement also the "targetPlayer == None" case    
+        # TODO: implement also the "targetPlayer == None" case
 
         if self.supportingPlanInfo != None:
-            return    
+            return
 
         action = -1
 
         for a in range(self.action_count):
+
+            if targetPlayer != None:
+                children_infosets = self.children_infoset[a]
+                children_leaves = self.children_leaves[a]
+            else:
+                children_infosets = set()
+                children_leaves = []
+
+                for node in self.nodes:
+                    child = node.children[a]
+                    if child.isLeaf():
+                        children_leaves.append(child)
+                    else:
+                        children_infosets.add(child.information_set)
+
+                children_infosets = list(children_infosets)
+
             a_omega = 1
-            for iset in self.children_infoset[a]:
+            for iset in children_infosets:
                 iset.updateSupportingPlan(targetPlayer)
                 (_, w) = iset.supportingPlanInfo
                 a_omega = min(a_omega, w)
-            for leaf in self.children_leaves[a]:
+            for leaf in children_leaves:
                 a_omega = min(a_omega, leaf.omega)
 
             if action == -1 or a_omega > omega:
