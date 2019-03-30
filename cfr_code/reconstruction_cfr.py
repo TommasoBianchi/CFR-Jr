@@ -5,7 +5,8 @@ import time
 def SolveWithReconstructionCFR(cfr_tree, iterations, perc = 10, show_perc = False, 
                                checkEveryIteration = -1, reconstructEveryIteration = 1,
                                check_callback = None, use_cfr_plus = False,
-                               reconstructPlayersTogether = False):
+                               reconstructPlayersTogether = False,
+                               reconstructWithOptimalPlan = True):
     
     jointStrategy = CFRJointStrategy()
 
@@ -36,7 +37,7 @@ def SolveWithReconstructionCFR(cfr_tree, iterations, perc = 10, show_perc = Fals
             if reconstructPlayersTogether:
                 jointStrategy.addJointDistribution(cfr_tree.buildJointFromMarginals_AllPlayersTogether())
             else:
-                jointStrategy.addJointDistribution(cfr_tree.buildJointFromMarginals())                
+                jointStrategy.addJointDistribution(cfr_tree.buildJointFromMarginals(select_optimal_plan = reconstructWithOptimalPlan))                
 
         if(checkEveryIteration > 0 and i % checkEveryIteration == 0):
             data = {'epsilon': cfr_tree.checkEquilibrium(jointStrategy),

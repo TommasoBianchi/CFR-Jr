@@ -126,7 +126,7 @@ class CFRTree:
 
         return epsilons
 
-    def buildJointFromMarginals(self):
+    def buildJointFromMarginals(self, select_optimal_plan = True):
 
         leaves = set()
         self.root.find_terminals(leaves)
@@ -156,6 +156,9 @@ class CFRTree:
                         best_plan = plan
                         best_plan_value = val
                         best_plan_leaf = l
+
+                        if not select_optimal_plan:
+                            break
 
                 if best_plan == None:
                     for l in leaves:
