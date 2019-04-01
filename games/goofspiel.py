@@ -1,6 +1,7 @@
 from data_structures.trees import Tree, Node, ChanceNode
 from functools import reduce
 from enum import Enum
+from games.utilities import all_permutations
 
 class TieSolver(Enum):
     Accumulate = 0
@@ -107,25 +108,6 @@ def build_all_possible_hands(num_players, ranks):
             hands.append(hand + [p])
 
     return hands
-
-def all_permutations(items):
-    """
-    Build all the possible permutations of a set of items.
-    """
-
-    if(len(items) == 0):
-        return [[]]
-
-    permutations = []
-
-    for item in items:
-        other_items = list(filter(lambda el: el != item, items))
-        permutations_of_other = all_permutations(other_items)
-        for p in permutations_of_other:
-            p.append(item)
-            permutations.append(p)
-
-    return permutations
 
 def goofspiel_utility(hand, moves, tie_solver = TieSolver.Accumulate):
     """
