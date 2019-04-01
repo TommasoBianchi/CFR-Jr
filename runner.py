@@ -32,6 +32,7 @@ parser.add_argument('--bootstrap_iterations', '-bt', type=int, default=0, help='
 parser.add_argument('--check_every_iteration', '-ct', type=int, default=-1, help='every how many iterations to check the epsilon')
 parser.add_argument('--bound_joint_size', '-bjs', const=True, nargs='?', help='bound or not the limit of the resulting joint strategy')
 parser.add_argument('--reconstruct_every_iteration', '-rei', type=int, default=1, help='every how many iterations to reconstruct a joint from the marginals')
+parser.add_argument('--reconstruct_not_optimal_plan', '-rnop', const=True, nargs='?', help='do not try to find the optimal plan to reconstruct at each reconstruction iteration')
 
 parser.add_argument('--algorithm', '-a', type=str, default='scfr', choices=['scfr', 'cfr', 'cfr+', 'rcfr'], help='algorithm to be used')
 
@@ -53,6 +54,7 @@ bootstrap_iterations = args.bootstrap_iterations
 check_every_iteration = args.check_every_iteration
 bound_joint_size = args.bound_joint_size != None
 reconstructEveryIteration = args.reconstruct_every_iteration
+reconstructWithOptimalPlan = args.reconstruct_not_optimal_plan == None
 
 log_file_name = args.logfile
 results_directory = args.results
@@ -85,6 +87,7 @@ def solve_function(cfr_tree):
     if args.algorithm == 'rcfr':
         return SolveWithReconstructionCFR(cfr_tree, number_iterations, checkEveryIteration = check_every_iteration,
                                           reconstructEveryIteration = reconstructEveryIteration,
+                                          reconstructWithOptimalPlan = reconstructWithOptimalPlan,
                                           check_callback = log_result_point_callback(results_file_name))
 
 # ----------------------------------------
