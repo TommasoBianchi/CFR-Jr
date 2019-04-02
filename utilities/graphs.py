@@ -21,7 +21,7 @@ def epsilon_graph(results, xaxis = 'iterations', ybottom = 0):
 	plt.ylim(bottom = ybottom)
 	plt.show()
 
-def comparative_epsilon_graph(results_array, xaxis = 'iterations', ybottom = 0):
+def comparative_epsilon_graph(results_array, xaxis = 'iterations', xlims = None, ylims = None, legend = None):
 	"""
 	Draw graph for the epsilons from the data obtained from multiple runs of SCFR in a single graph.
 	"""
@@ -41,8 +41,15 @@ def comparative_epsilon_graph(results_array, xaxis = 'iterations', ybottom = 0):
 		plt.xlabel("Iteration")
 	elif xaxis == 'time':
 		plt.xlabel("Time")
-	plt.legend(["Result " + str(i+1) for i in range(len(results_array))])
-	plt.ylim(bottom = ybottom)
+
+	if legend == None:
+		legend = ["Result " + str(i+1) for i in range(len(results_array))]
+	plt.legend(legend)
+	
+	if xlims != None:
+		plt.xlim(xlims)
+	if ylims != None:
+		plt.ylim(ylims)
 	plt.show()
 
 def graphs_from_cfr_results(results):
