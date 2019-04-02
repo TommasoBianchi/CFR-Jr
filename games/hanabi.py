@@ -22,18 +22,44 @@ def build_hanabi_tree(num_players, num_colors, color_distribution, compress_card
                 all_cards.append(card)
 
     deck_permutations = all_permutations(all_cards)
+    deck_probability = 1 / len(deck_permutations)
+    information_sets = {}
 
-    return len(deck_permutations)
+    for deck in deck_permutations:
+        node_known_infos = None# Something
+        if node_known_infos in information_sets:
+            information_set = information_sets[node_known_infos]
+        else:
+            information_set = -1
 
-# Possible deck structures:
+        node = tree.addNode(0, parent = root, probability = deck_probability, 
+                         actionName = "TODO", information_set = information_set)
+
+        if information_set == -1:
+            information_sets[node_known_infos] = node.information_set
+
+        #build_hanabi_deck_tree(deck, tree, information_sets, node)
+
+    print(len(deck_permutations))
+
+    return tree
+
+# Some possible deck structures:
 #
-#       1 color and [3, 2, 2] distribution    -> 72  deck permutations
-#       1 color and [3, 2, 2, 1] distribution -> 288 deck permutations
-#       1 color and [4, 2, 2] distribution    -> 96  deck permutations
+#       1 color and [3, 2, 2, 2, 1] distribution (real one - but single color) -> 75600  deck permutations
 #
-#       2 colors and [3, 1] distribution -> 216 deck permutations
-#       2 colors and [2, 2] distribution -> 384 deck permutations
-#       2 colors and [3, 1] distribution -> 216 deck permutations
-#       2 colors and [3, 1] distribution -> 216 deck permutations
+#       1 color and [2, 1] distribution       -> 3  deck permutations
+#       1 color and [3, 2] distribution       -> 10  deck permutations
+#       1 color and [2, 2, 1] distribution    -> 30  deck permutations
+#       1 color and [3, 2, 1] distribution    -> 60  deck permutations
+#       1 color and [3, 2, 2] distribution    -> 210  deck permutations
+#       1 color and [3, 2, 2, 1] distribution -> 1680 deck permutations
+#       1 color and [4, 2, 2] distribution    -> 420  deck permutations
+#
+#       2 colors and [3, 1] distribution -> 1120 deck permutations
+#       2 colors and [2, 2] distribution -> 2520 deck permutations
 #
 #       3 colors and [1, 1] distribution -> 720 deck permutations
+#
+#       5 colors and [3, 2, 2, 2, 1] distribution (real one) -> roughly e+56 deck permutations
+#                                 (119362714169794152069667854714196512499836511150699184128 deck permutations)

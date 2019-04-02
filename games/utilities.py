@@ -10,12 +10,17 @@ def all_permutations(items):
 
     permutations = []
 
-    for item in items:
-        other_items = list(filter(lambda el: el != item, items))
+    for i in range(len(items)):
+        item = items[i]
+        other_items = items[:i] + items[i+1:]#list(filter(lambda el: el != item, items))
         permutations_of_other = all_permutations(other_items)
         for p in permutations_of_other:
             p.append(item)
             permutations.append(p)
+
+    permutations = map(lambda pi: tuple(pi), permutations) # Make every permutation into a tuple
+    permutations = set(permutations)  # Remove duplicates
+    permutations = list(map(lambda pi: list(pi), permutations)) # Make every permutation back into a list
 
     return permutations
 
