@@ -41,3 +41,9 @@ def number_to_pair(z):
     y = z - t
     x = w - y
     return (x, y)
+
+def list_to_tuple(l):
+    if type(l) not in [list, tuple]:
+        return l
+
+    return tuple([list_to_tuple(el) for el in l])
