@@ -206,7 +206,7 @@ class Leaf(Node):
     def __repr__(self):
         s = "Leaf" + str(self.id) 
         if(self.parent != None):
-            s += " (children of Node" + str(self.parent.id) + " via Action " +                    str(self.parent.information_set) + "." + str(self.incoming_action) + ") - " +                    " utility is " + str(self.utility)
+            s += " (children of Node" + str(self.parent.id) + " via Action " + str(self.incoming_action_name) + ") - " +                    " utility is " + str(self.utility)
         return s
     
     def isLeaf(self):
@@ -237,6 +237,7 @@ class ChanceNode(Node):
         if(actionName == None):
             actionName = "c." + str(len(self.children) - 1)
         self.actionNames.append(actionName)
+        child.incoming_action_name = actionName
         
 # --------------------------------------------------------------------------------
 

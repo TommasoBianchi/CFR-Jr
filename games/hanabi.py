@@ -5,7 +5,7 @@ from copy import deepcopy
 
 class HanabiState:
     def __init__(self, remaining_deck, player_hands, cards_in_play, discarded_cards, clue_tokens_available, 
-                 clue_history, player_clued_hands, remaining_turns_after_deck_end = -1):
+                 clue_history, player_clued_hands, action_history, remaining_turns_after_deck_end = -1):
         self.remaining_deck = remaining_deck
         self.player_hands = player_hands
         self.cards_in_play = cards_in_play
@@ -13,13 +13,16 @@ class HanabiState:
         self.clue_tokens_available = clue_tokens_available
         self.clue_history = clue_history
         self.player_clued_hands = player_clued_hands
+        self.action_history = action_history
         self.remaining_turns_after_deck_end = remaining_turns_after_deck_end
+
+        # TODO: maybe clue history is not needed now that we have action history??
 
     def toPlayerState(self, player):
         player_visible_hands = self.player_hands[:player] + [self.player_clued_hands[player]] + \
                                 self.player_hands[player+1:]
         return list_to_tuple((player_visible_hands, self.cards_in_play, self.discarded_cards, 
-                        self.clue_tokens_available, self.clue_history))
+                        self.clue_tokens_available, self.clue_history, self.action_history))
 
     def getLegalActions(self, player):
         actions = set() # Use a set to remove duplicates (in particular, duplicate clue actions)
@@ -33,6 +36,24 @@ class HanabiState:
             actions.add('d.' + str(i) + '-P' + str(player))    # add action to discard i-th card
 
         if self.clue_tokens_available > 0:
+            # In only one number/color is left in the cards in the remaining deck and in the hands of the
+            # players, then do not allow to give that clue (it would be useless)
+            all_numbers_left = set()
+            all_colors_left = set()
+            for card in self.remaining_deck:
+                if type(card) == int:
+                    card = number_to_pair(card)
+                all_numbers_left.add(card[0])
+                all_colors_left.add(card[1])
+            for hand in self.player_hands:
+                for card in hand:
+                    if type(card) == int:
+                        card = number_to_pair(card)
+                    all_numbers_left.add(card[0])
+                    all_colors_left.add(card[1])
+            give_number_clues = len(all_numbers_left) > 1
+            give_colors_clues = len(all_colors_left) > 1
+
             for other_player in range(len(self.player_hands)):
                 if other_player == player:
                     continue
@@ -47,12 +68,10 @@ class HanabiState:
                         continue
                     
                     already_given_clues = self.player_clued_hands[other_player][card_index]
-                    if already_given_clues[0] == 0:
+                    if already_given_clues[0] == 0 and give_number_clues:
                         actions.add('c' + str(other_player) + '.n' + str(card[0]) + '-P' + str(player))   # clue number
-                    if already_given_clues[1] == 0:
+                    if already_given_clues[1] == 0 and give_colors_clues:
                         actions.add('c' + str(other_player) + '.c' + str(card[1]) + '-P' + str(player))   # clue color
-
-            # TODO: maybe do not allow to give "useless" clues
 
         actions = list(actions)
         return actions
@@ -90,6 +109,7 @@ class HanabiState:
 
             child_state.player_hands[player][card_index] = new_card
             child_state.player_clued_hands[player][card_index] = (0, 0)
+            child_state.action_history.append(action)
 
             return child_state
 
@@ -119,6 +139,7 @@ class HanabiState:
             child_state.clue_tokens_available += 1
             child_state.player_hands[player][card_index] = new_card
             child_state.player_clued_hands[player][card_index] = (0, 0)
+            child_state.action_history.append(action)
 
             return child_state
 
@@ -147,6 +168,7 @@ class HanabiState:
                     child_state.player_clued_hands[target_player][card_index] = new_clue
 
                 child_state.clue_history.append(action + '-P' + str(player))
+                child_state.action_history.append(action)
 
             return child_state
 
@@ -159,6 +181,7 @@ class HanabiState:
         print("Clue tokens available = " + str(self.clue_tokens_available))
         print("Clue history = " + str(self.clue_history))
         print("Player clued hands = " + str(self.player_clued_hands))
+        print("Action history = " + str(self.action_history))
         if self.remaining_turns_after_deck_end >= 0:
             print("Remaining turns after deck end = " + str(self.remaining_turns_after_deck_end))
         print("--- Hanabi State ---")
@@ -167,7 +190,7 @@ class HanabiState:
         return HanabiState(deepcopy(self.remaining_deck), deepcopy(self.player_hands), deepcopy(self.cards_in_play), 
                            deepcopy(self.discarded_cards), deepcopy(self.clue_tokens_available), 
                            deepcopy(self.clue_history), deepcopy(self.player_clued_hands), 
-                           deepcopy(self.remaining_turns_after_deck_end))
+                           deepcopy(self.action_history), deepcopy(self.remaining_turns_after_deck_end))
 
     def createBaseState(deck, num_players, cards_per_player, num_colors):
         deck = deck.copy()
@@ -179,11 +202,11 @@ class HanabiState:
 
         return HanabiState(remaining_deck = deck, player_hands = player_hands, 
                            cards_in_play = [0 for _ in range(num_colors)], discarded_cards = [], 
-                           clue_tokens_available = 1, clue_history = [], 
+                           clue_tokens_available = 1, clue_history = [], action_history = [],
                            player_clued_hands = [[(0, 0) for _ in range(cards_per_player)] for _ in range(num_players)])                           
 
 def build_hanabi_tree(num_players, num_colors, color_distribution, num_cards_per_player,
-                      compress_card_representation = False):
+                      compress_card_representation = False, display_progress = False):
     """
     Build a tree for the game of Hanabi with a given number of players, a given number of cards in each player's
     hand, given cards colors and with a given distribution of cards inside each color (e.g. [3, 2, 2, 2, 1] is 
@@ -211,7 +234,8 @@ def build_hanabi_tree(num_players, num_colors, color_distribution, num_cards_per
 
     i = 1
     for deck in deck_permutations:
-        print("--- Processing deck " + str(deck) + " (" + str(i) + "/" + str(len(deck_permutations)) + ") ---")
+        if display_progress:
+            print("--- Processing deck " + str(deck) + " (" + str(i) + "/" + str(len(deck_permutations)) + ") ---")
         i += 1
 
         baseState = HanabiState.createBaseState(deck, num_players, num_cards_per_player, num_colors)
@@ -244,7 +268,7 @@ def build_hanabi_state_tree(hanabiState, tree, information_sets, parent_node, cu
             tree.addLeaf(parent = parent_node, utility = [points] * tree.numOfPlayers, actionName = str(action))
             continue
 
-        node_known_infos = hanabiState.toPlayerState(next_player)
+        node_known_infos = childState.toPlayerState(next_player)
         if node_known_infos in information_sets:
             information_set = information_sets[node_known_infos]
         else:

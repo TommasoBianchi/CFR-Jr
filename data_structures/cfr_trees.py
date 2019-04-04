@@ -58,8 +58,8 @@ class CFRTree:
 
             for n in iset.nodes:
                 if(n.base_node.getSequence(iset.player) != seq):
-                    raise Exception("ERROR: This tree is not a game with perfect recall. Nodes of information set " + iset.id +
-                                    " have different sequences.")
+                    raise Exception("ERROR: This tree is not a game with perfect recall. Nodes of information set "
+                                    + str(iset.id) + " have different sequences.")
 
             # Setup children leaves and children infosets for this information set
             iset.children_infoset = []
