@@ -192,7 +192,7 @@ class HanabiState:
                            deepcopy(self.clue_history), deepcopy(self.player_clued_hands), 
                            deepcopy(self.action_history), deepcopy(self.remaining_turns_after_deck_end))
 
-    def createBaseState(deck, num_players, cards_per_player, num_colors):
+    def createBaseState(deck, num_players, cards_per_player, num_colors, starting_tokens):
         deck = deck.copy()
 
         player_hands = []
@@ -202,10 +202,10 @@ class HanabiState:
 
         return HanabiState(remaining_deck = deck, player_hands = player_hands, 
                            cards_in_play = [0 for _ in range(num_colors)], discarded_cards = [], 
-                           clue_tokens_available = 1, clue_history = [], action_history = [],
+                           clue_tokens_available = starting_tokens, clue_history = [], action_history = [],
                            player_clued_hands = [[(0, 0) for _ in range(cards_per_player)] for _ in range(num_players)])                           
 
-def build_hanabi_tree(num_players, num_colors, color_distribution, num_cards_per_player,
+def build_hanabi_tree(num_players, num_colors, color_distribution, num_cards_per_player, starting_tokens = 1,
                       compress_card_representation = False, display_progress = False):
     """
     Build a tree for the game of Hanabi with a given number of players, a given number of cards in each player's
@@ -238,7 +238,7 @@ def build_hanabi_tree(num_players, num_colors, color_distribution, num_cards_per
             print("--- Processing deck " + str(deck) + " (" + str(i) + "/" + str(len(deck_permutations)) + ") ---")
         i += 1
 
-        baseState = HanabiState.createBaseState(deck, num_players, num_cards_per_player, num_colors)
+        baseState = HanabiState.createBaseState(deck, num_players, num_cards_per_player, num_colors, starting_tokens)
 
         node_known_infos = baseState.toPlayerState(0)
         if node_known_infos in information_sets:

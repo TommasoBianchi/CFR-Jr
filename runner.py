@@ -1,6 +1,7 @@
 from games.kuhn import build_kuhn_tree
 from games.leduc import build_leduc_tree
 from games.goofspiel import build_goofspiel_tree, TieSolver
+from games.hanabi import build_hanabi_tree
 
 from data_structures.trees import randomTree
 from data_structures.cfr_trees import CFRTree
@@ -15,7 +16,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='runner parser')
 
-parser.add_argument('game', type=str, help='type of game instance (kuhn, leduc, goofspiel)', choices=['kuhn','leduc','goofspiel','random'])
+parser.add_argument('game', type=str, help='type of game instance (random, kuhn, leduc, goofspiel, hanabi)', choices=['kuhn','leduc','goofspiel','random','hanabi'])
 
 parser.add_argument('--players', '-p', type=int, default=3, help='number of players')
 parser.add_argument('--rank', '-r', type=int, default=3, help='rank of the game')
@@ -26,6 +27,10 @@ parser.add_argument('--tie_solver', '-ts', type=str, default='accumulate', help=
 parser.add_argument('--branching_factor', '-bf', type=int, default=2, help='branching factor of the tree (only for random)')
 parser.add_argument('--depth', '-d', type=int, default=4, help='depth of the tree (only for random)')
 parser.add_argument('--iset_probability', '-ip', type=float, default=1, help='information set probability (only for random)')
+
+parser.add_argument('--cards_per_player', '-cpp', type=int, default=1, help='how many cards are dealt to each player (only for hanabi')
+parser.add_argument('--starting_clue_tokens', '-sct', type=int, default=1, help='how many clue tokens are available at the beginning of the game (only for hanabi)')
+parser.add_argument('--color_distribution', '-cd', type=int, default=[1,1], nargs='*', help='distribution of card values inside of a single color/suit (only for hanabi')
 
 parser.add_argument('--number_iterations', '-t', type=int, default=100000, help='number of iterations to run')
 parser.add_argument('--bootstrap_iterations', '-bt', type=int, default=0, help='number of iterations to run without sampling')
@@ -48,6 +53,9 @@ num_of_suits = args.suits
 betting_parameters = args.betting_parameters
 tie_solver = {'accumulate':TieSolver.Accumulate,'discard_if_all':TieSolver.DiscardIfAll,'discard_if_high':TieSolver.DiscardIfHigh,
               'discard_always':TieSolver.DiscardAlways}[args.tie_solver]
+cards_per_player = args.cards_per_player
+starting_clue_tokens = args.starting_clue_tokens
+color_distribution = args.color_distribution
 
 number_iterations = args.number_iterations
 bootstrap_iterations = args.bootstrap_iterations
@@ -192,6 +200,32 @@ if args.game == 'random':
     with open(results_file_name + '.dat', 'w') as f:
         f.write(tree_to_colgen_dat_file(random_tree))
     log_line("Dat file created (for random tree).")
+
+    res = solve_function(cfr_tree)
+    log_line("Finished solving with " + args.algorithm + ".")
+    log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
+
+    results_file = open(results_file_name, "r")
+    old_data = json.load(results_file)
+    results_file.close()
+    old_data["total_duration"] = res['tot_time']
+    old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
+    old_data["utility"] = res['utility']
+    results_file = open(results_file_name, "w+")
+    results_file.write(json.dumps(old_data))
+    results_file.close()
+
+if args.game == 'hanabi':
+    hanabi_tree = build_hanabi_tree(num_players, num_of_suits, color_distribution, cards_per_player, starting_clue_tokens)
+    log_line("Built a hanabi tree with parameters: " + str(parameters_dict))
+    cfr_tree = CFRTree(hanabi_tree)
+
+    string_description = str(num_players) + '_' + str(num_of_suits) + '_' + str(color_distribution) + \
+                        '_' + str(cards_per_player) + '_' + str(starting_clue_tokens)   
+    results_file_name = results_directory + "hanabi/" + str(int(time.time())) + "_" + string_description
+    results_file = open(results_file_name, "w+")
+    results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
+    results_file.close()
 
     res = solve_function(cfr_tree)
     log_line("Finished solving with " + args.algorithm + ".")
