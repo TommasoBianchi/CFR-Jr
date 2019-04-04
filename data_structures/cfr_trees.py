@@ -58,8 +58,12 @@ class CFRTree:
 
             for n in iset.nodes:
                 if(n.base_node.getSequence(iset.player) != seq):
+                    print("Sequences = ")
+                    for node in iset.nodes:
+                        print(node.base_node.getSequence(iset.player))
                     raise Exception("ERROR: This tree is not a game with perfect recall. Nodes of information set "
-                                    + str(iset.id) + " have different sequences.")
+                                    + str(iset.id) + " (" + reduce(lambda acc, el: str(el.base_node.id) + ', ' + acc, iset.nodes, "") + \
+                                    ") have different sequences.")
 
             # Setup children leaves and children infosets for this information set
             iset.children_infoset = []
