@@ -69,7 +69,7 @@ results_directory = args.results
 
 def log_line(string):
     log_file = open(log_file_name, "a")
-    log_file.write(string + "\n")
+    log_file.write(time.strftime("%Y.%m.%d %H:%m:%S: ") + string + "\n")
     log_file.flush()
     log_file.close()
 
