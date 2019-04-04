@@ -22,7 +22,8 @@ class HanabiState:
         player_visible_hands = self.player_hands[:player] + [self.player_clued_hands[player]] + \
                                 self.player_hands[player+1:]
         return list_to_tuple((player_visible_hands, self.cards_in_play, self.discarded_cards, 
-                        self.clue_tokens_available, self.clue_history, self.action_history))
+                        self.clue_tokens_available, self.clue_history, self.action_history,
+                        self.player_clued_hands))
 
     def getLegalActions(self, player):
         actions = set() # Use a set to remove duplicates (in particular, duplicate clue actions)
@@ -73,7 +74,7 @@ class HanabiState:
                     if already_given_clues[1] == 0 and give_colors_clues:
                         actions.add('c' + str(other_player) + '.c' + str(card[1]) + '-P' + str(player))   # clue color
 
-        actions = list(actions)
+        actions = sorted(list(actions)) # Sort actions so that they are in the same order in each node
         return actions
 
     def getChildState(self, action):
@@ -109,7 +110,7 @@ class HanabiState:
 
             child_state.player_hands[player][card_index] = new_card
             child_state.player_clued_hands[player][card_index] = (0, 0)
-            child_state.action_history.append(action)
+            child_state.action_history.append('p.' + str(card))
 
             return child_state
 
@@ -139,7 +140,7 @@ class HanabiState:
             child_state.clue_tokens_available += 1
             child_state.player_hands[player][card_index] = new_card
             child_state.player_clued_hands[player][card_index] = (0, 0)
-            child_state.action_history.append(action)
+            child_state.action_history.append('d.' + str(card))
 
             return child_state
 
@@ -153,7 +154,7 @@ class HanabiState:
             child_state.clue_tokens_available -= 1  # Consume a clue token
 
             for card_index in range(len(child_state.player_hands[target_player])):
-                card = self.player_hands[player][card_index]
+                card = self.player_hands[target_player][card_index]
 
                 if type(card) == int:
                     card = number_to_pair(card)
