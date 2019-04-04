@@ -18,6 +18,7 @@ class Tree:
         self.node_count = 1
         self.infoset_count = 1
         self.numOfPlayers = numOfPlayers
+        self.max_depth = 0
         
     def addNode(self, player, information_set = -1, parent = None, probability = -1, actionName = None):
         """
@@ -40,6 +41,7 @@ class Tree:
             parent = self.root
         
         node = Node(player, self.node_count, information_set, parent)
+        self.max_depth = max(self.max_depth, node.depth)
         
         if(parent.isChance()):
             parent.addChild(node, probability, actionName)
@@ -60,6 +62,7 @@ class Tree:
             return
         
         leaf = Leaf(self.node_count, utility, parent)
+        self.max_depth = max(self.max_depth, leaf.depth)
         parent.addChild(leaf, actionName)
         self.node_count += 1
         return leaf
@@ -79,6 +82,7 @@ class Tree:
             parent = self.root
         
         chanceNode = ChanceNode(self, node_count, parent, actionName)
+        self.max_depth = max(self.max_depth, chanceNode.depth)
         parent.addChild(chanceNode)
         self.node_count += 1
         
@@ -101,12 +105,15 @@ class Node:
         self.id = id
         self.parent = parent
         self.player = player
+        self.depth = 0
+        if parent != None:
+            self.depth = parent.depth + 1
         self.children = []
         self.actionNames = []
         self.information_set = information_set
         self.incoming_action = None
         self.incoming_action_name = None
-        
+
     def __str__(self):
         return self.__repr__()
     
