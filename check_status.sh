@@ -7,7 +7,7 @@ echo ""
 
 results_folder=$1
 
-for game in kuhn leduc goofspiel random; do
+for game in kuhn leduc goofspiel random hanabi; do
 	echo ""
 	echo -e "\033[0;32m$game\033[0m"
 	echo ""
