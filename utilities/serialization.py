@@ -1,6 +1,8 @@
 from functools import reduce
 import itertools
 from data_structures.cfr_trees import CFRTree
+from data_structures.trees import Tree, Node, ChanceNode
+import ast
 
 def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
     """
@@ -145,3 +147,89 @@ def tree_to_colgen_dat_file(tree, compressSequenceNames = True):
 
 
     return s
+
+def serialize_tree(tree):
+    def serialize_subtree(node):
+        # print("Starting " + str(node))
+        if node.isLeaf():
+            return 'l ' + str(node.utility)[1:-1].replace(',', '') + '\n'
+        
+        if node.isChance():
+            res = 'c ' + str(len(node.children))
+        else:
+            chance_probability = ''
+            if node.parent != None and node.parent.isChance():
+                chance_probability = ' ' + str(node.parent.distribution[node.incoming_action])
+            res = 'n ' + str(len(node.children)) + ' ' + str(node.player) + ' ' + \
+                    str(node.information_set) + chance_probability
+
+        res += '\n'
+
+        for child in node.children:
+            res += serialize_subtree(child)
+        # print("Ending " + str(node))
+        # print(res)
+        # print('----------')
+        return res
+
+    header = str(tree.numOfPlayers) + ' ' + str(tree.root.player) + '\n'
+
+    return header + serialize_subtree(tree.root)
+
+def deserialize_tree(string):
+    def deserialize_subtree(tree, parent_node, lines):
+        line = lines[0]
+        lines = lines[1:]
+        line_elements = line.split(' ')
+
+        if line[0] == 'l':
+            utility = ast.literal_eval('[' + line[2:].replace(' ', ',') + ']')
+            tree.addLeaf(parent_node, utility)
+        elif line[0] == 'n':
+            num_children = int(line_elements[1])
+            player = int(line_elements[2])
+            information_set = int(line_elements[3])
+            chance_probability = -1
+            if len(line_elements) > 4:
+                chance_probability = line_elements[4]
+
+            node = tree.addNode(player, information_set, parent_node, chance_probability)
+
+            for i in range(num_children):
+                lines = deserialize_subtree(tree, node, lines)
+        elif line[0] == 'c':
+            num_children = int(line_elements[1])
+
+            chance_node = tree.addChanceNode(parent_node)
+
+            for i in range(num_children):
+                lines = deserialize_subtree(tree, chance_node, lines)
+
+        return lines
+
+    lines = string.split('\n')
+    header_line = lines[0]
+    header_elements = header_line.split(' ')
+
+    num_players = int(header_elements[0])
+    first_player = int(header_elements[1])
+
+    root_line = lines[1]
+    root_elements = root_line.split(' ')
+
+    root_num_children = int(root_elements[1])
+    if root_line[0] == 'n':
+        root_player = int(root_elements[2])
+        root_information_set = int(root_elements[3])
+
+        root = Node(root_player, 0, root_information_set)
+    elif root_line[0] == 'c':
+        root = ChanceNode(0)
+
+    tree = Tree(num_players, first_player, root)
+
+    lines = lines[2:]
+    for i in range(root_num_children):
+        lines = deserialize_subtree(tree, tree.root, lines)
+
+    return tree

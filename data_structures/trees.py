@@ -17,6 +17,7 @@ class Tree:
         self.root = root
         self.node_count = 1
         self.infoset_count = 1
+        self.max_infoset = 0
         self.numOfPlayers = numOfPlayers
         self.max_depth = 0
         
@@ -36,6 +37,7 @@ class Tree:
         if(information_set == -1):
             information_set = self.infoset_count
             self.infoset_count += 1
+        self.max_infoset = max(self.max_infoset, information_set)
         
         if(parent == None):
             parent = self.root
