@@ -220,8 +220,9 @@ if args.game == 'hanabi':
     log_line("Built a hanabi tree with parameters: " + str(parameters_dict))
     cfr_tree = CFRTree(hanabi_tree)
 
-    string_description = str(num_players) + '_' + str(num_of_suits) + '_' + str(color_distribution) + \
-                        '_' + str(cards_per_player) + '_' + str(starting_clue_tokens)   
+    string_description = str(num_players) + '_' + str(num_of_suits) + '_' + \
+                         str(color_distribution).replace(' ','').replace(',','_') + '_' + \
+                         str(cards_per_player) + '_' + str(starting_clue_tokens)   
     results_file_name = results_directory + "hanabi/" + str(int(time.time())) + "_" + string_description
     results_file = open(results_file_name, "w+")
     results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
