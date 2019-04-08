@@ -5,7 +5,7 @@ from copy import deepcopy
 
 class HanabiState:
     def __init__(self, remaining_deck, player_hands, cards_in_play, discarded_cards, clue_tokens_available, 
-                 clue_history, player_clued_hands, action_history, remaining_turns_after_deck_end = -1):
+                 clue_history, player_clued_hands, action_history, highest_card_number, remaining_turns_after_deck_end = -1):
         self.remaining_deck = remaining_deck
         self.player_hands = player_hands
         self.cards_in_play = cards_in_play
@@ -15,6 +15,7 @@ class HanabiState:
         self.player_clued_hands = player_clued_hands
         self.action_history = action_history
         self.remaining_turns_after_deck_end = remaining_turns_after_deck_end
+        self.highest_card_number = highest_card_number
 
         # TODO: maybe clue history is not needed now that we have action history??
 
@@ -99,6 +100,9 @@ class HanabiState:
             child_state = self.copy()
             child_state.cards_in_play[card[1] - 1] += 1    # Play the card
 
+            if min(child_state.cards_in_play) == self.highest_card_number:  # Win and end
+                return self.cards_in_play   # Return the cards in play so that the utility can be computed
+
             if len(child_state.remaining_deck) > 0:
                 new_card = child_state.remaining_deck.pop(0)
             else:
@@ -150,6 +154,9 @@ class HanabiState:
             clue_type = action[3]
             clue_value = int(action[4])
 
+            if self.remaining_turns_after_deck_end == 1:    # Available turns are finished, game ends
+                return self.cards_in_play   # Return the cards in play so that the utility can be computed
+
             child_state = self.copy()
             child_state.clue_tokens_available -= 1  # Consume a clue token
 
@@ -167,6 +174,9 @@ class HanabiState:
                 elif clue_type == 'c' and card[1] == clue_value:    # Clue color
                     new_clue = (old_clue[0], clue_value)
                     child_state.player_clued_hands[target_player][card_index] = new_clue
+
+                if child_state.remaining_turns_after_deck_end > 0:
+                    child_state.remaining_turns_after_deck_end -= 1 # Consume a turn
 
                 child_state.clue_history.append(action + '-P' + str(player))
                 child_state.action_history.append(action)
@@ -191,7 +201,8 @@ class HanabiState:
         return HanabiState(deepcopy(self.remaining_deck), deepcopy(self.player_hands), deepcopy(self.cards_in_play), 
                            deepcopy(self.discarded_cards), deepcopy(self.clue_tokens_available), 
                            deepcopy(self.clue_history), deepcopy(self.player_clued_hands), 
-                           deepcopy(self.action_history), deepcopy(self.remaining_turns_after_deck_end))
+                           deepcopy(self.action_history), deepcopy(self.highest_card_number),
+                           deepcopy(self.remaining_turns_after_deck_end))
 
     def createBaseState(deck, num_players, cards_per_player, num_colors, starting_tokens):
         deck = deck.copy()
@@ -204,6 +215,7 @@ class HanabiState:
         return HanabiState(remaining_deck = deck, player_hands = player_hands, 
                            cards_in_play = [0 for _ in range(num_colors)], discarded_cards = [], 
                            clue_tokens_available = starting_tokens, clue_history = [], action_history = [],
+                           highest_card_number = max(deck, key = lambda c: c[0])[0],
                            player_clued_hands = [[(0, 0) for _ in range(cards_per_player)] for _ in range(num_players)])                           
 
 def build_hanabi_tree(num_players, num_colors, color_distribution, num_cards_per_player, starting_tokens = 1,
@@ -292,11 +304,14 @@ def build_hanabi_state_tree(hanabiState, tree, information_sets, parent_node, cu
 #       1 color and [2, 1] distribution       -> 3  deck permutations
 #       1 color and [3, 2] distribution       -> 10  deck permutations
 #       1 color and [2, 2, 1] distribution    -> 30  deck permutations
+#       1 color and [2, 2, 1, 1] distribution -> 180  deck permutations
 #       1 color and [3, 2, 1] distribution    -> 60  deck permutations
 #       1 color and [3, 2, 2] distribution    -> 210  deck permutations
 #       1 color and [3, 2, 2, 1] distribution -> 1680 deck permutations
 #       1 color and [4, 2, 2] distribution    -> 420  deck permutations
 #
+#       2 colors and [2, 1] distribution -> 180 deck permutations
+#       2 colors and [1, 1, 1] distribution -> 720 deck permutations
 #       2 colors and [3, 1] distribution -> 1120 deck permutations
 #       2 colors and [2, 2] distribution -> 2520 deck permutations
 #
