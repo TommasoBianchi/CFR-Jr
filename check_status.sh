@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo ""
-ps auxf | grep 'R .* python3 runner.py .* -ct' -o
+ps auxf | grep 'R .* python3 runner.py .* &' -o
 echo ""
 echo ""
 

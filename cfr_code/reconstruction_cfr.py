@@ -42,6 +42,7 @@ def SolveWithReconstructionCFR(cfr_tree, iterations, perc = 10, show_perc = Fals
         if(checkEveryIteration > 0 and i % checkEveryIteration == 0):
             data = {'epsilon': cfr_tree.checkEquilibrium(jointStrategy),
                     'marginal_epsilon': cfr_tree.checkMarginalsEpsilon(),
+                    'joint_support_size': len(jointStrategy.plans),
                     'iteration_number': i,
                     'duration': time.time() - last_checkpoint_time,
                     'utility': u}
