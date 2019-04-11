@@ -13,6 +13,7 @@ from utilities.serialization import tree_to_colgen_dat_file
 import time
 import json
 import argparse
+from functools import reduce
 
 parser = argparse.ArgumentParser(description='runner parser')
 
@@ -98,6 +99,20 @@ def solve_function(cfr_tree):
                                           reconstructWithOptimalPlan = reconstructWithOptimalPlan,
                                           check_callback = log_result_point_callback(results_file_name))
 
+def count_sequences(cfr_tree):
+    all_nodes = reduce(lambda x, y: x + y.nodes, cfr_tree.information_sets.values(), [])
+    all_leaves = list(filter(lambda n: n.isLeaf(), reduce(lambda x, y: x + y.children, all_nodes, [])))
+    all_nodes = all_nodes + all_leaves
+    
+    count = 0
+
+    for p in range(cfr_tree.numOfPlayers):
+        Q_raw = list(filter(lambda q: q != {}, map(lambda n: n.base_node.getSequence(p), all_nodes)))
+        Q = [{}] + [dict(t) for t in {tuple(d.items()) for d in Q_raw}]
+        count += len(Q)
+        
+    return count
+
 # ----------------------------------------
 # Install handler to detect crashes
 # ----------------------------------------
@@ -113,131 +128,87 @@ def log_except_hook(*exc_info):
 sys.excepthook = log_except_hook
 # ----------------------------------------
 
+def run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations):
+    results_file = open(results_file_name, "w+")
+    parameters_dict['infoset_amount'] = len(cfr_tree.information_sets)
+    parameters_dict['sequences_amount'] = count_sequences(cfr_tree)
+    results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
+    results_file.close()
+
+    res = solve_function(cfr_tree)
+    log_line("Finished solving with " + args.algorithm + ".")
+    log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
+
+    results_file = open(results_file_name, "r")
+    old_data = json.load(results_file)
+    results_file.close()
+    old_data["total_duration"] = res['tot_time']
+    old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
+    old_data["utility"] = res['utility']
+    results_file = open(results_file_name, "w+")
+    results_file.write(json.dumps(old_data))
+    results_file.close()
+
 if args.game == 'kuhn':
+    game_name = "kuhn_" + str(num_players) + "_" + str(rank)
+    log_line("Building a " + game_name + " tree")
     kuhn_tree = build_kuhn_tree(num_players, rank)
-    log_line("Built a kuhn tree with parameters: " + str(parameters_dict))
+    log_line("Built a " + game_name + " tree")
     cfr_tree = CFRTree(kuhn_tree)
     
     results_file_name = results_directory + "kuhn/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank)
-    results_file = open(results_file_name, "w+")
-    results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
-    results_file.close()
-
-    res = solve_function(cfr_tree)
-    log_line("Finished solving with " + args.algorithm + ".")
-    log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
     
-    results_file = open(results_file_name, "r")
-    old_data = json.load(results_file)
-    results_file.close()
-    old_data["total_duration"] = res['tot_time']
-    old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
-    old_data["utility"] = res['utility']
-    results_file = open(results_file_name, "w+")
-    results_file.write(json.dumps(old_data))
-    results_file.close()
+    run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
 if args.game == 'leduc':
+    game_name = "leduc_" + str(num_players) + "_" + str(num_of_suits) + "_" + str(rank)
+    log_line("Building a " + game_name + " tree")
     leduc_tree = build_leduc_tree(num_players, num_of_suits, rank, betting_parameters)
-    log_line("Built a leduc tree with parameters: " + str(parameters_dict))
+    log_line("Built a " + game_name + " tree")
     cfr_tree = CFRTree(leduc_tree)
 
     results_file_name = results_directory + "leduc/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(num_of_suits) + "_" + str(rank)
-    results_file = open(results_file_name, "w+")
-    results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
-    results_file.close()
-
-    res = solve_function(cfr_tree)
-    log_line("Finished solving with " + args.algorithm + ".")
-    log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
     
-    results_file = open(results_file_name, "r")
-    old_data = json.load(results_file)
-    results_file.close()
-    old_data["total_duration"] = res['tot_time']
-    old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
-    old_data["utility"] = res['utility']
-    results_file = open(results_file_name, "w+")
-    results_file.write(json.dumps(old_data))
-    results_file.close()
+    run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
 if args.game == 'goofspiel':
+    game_name = "goofspiel_" + str(num_players) + "_" + str(rank)
+    log_line("Building a " + game_name + " tree")
     goofspiel_tree = build_goofspiel_tree(num_players, rank, tie_solver)
-    log_line("Built a goofspiel tree with parameters: " + str(parameters_dict))
+    log_line("Built a " + game_name + " tree")
     cfr_tree = CFRTree(goofspiel_tree)
 
     results_file_name = results_directory + "goofspiel/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank)
-    results_file = open(results_file_name, "w+")
-    results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
-    results_file.close()
-
-    res = solve_function(cfr_tree)
-    log_line("Finished solving with " + args.algorithm + ".")
-    log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
-
-    results_file = open(results_file_name, "r")
-    old_data = json.load(results_file)
-    results_file.close()
-    old_data["total_duration"] = res['tot_time']
-    old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
-    old_data["utility"] = res['utility']
-    results_file = open(results_file_name, "w+")
-    results_file.write(json.dumps(old_data))
-    results_file.close()
+    
+    run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
 if args.game == 'random':
+    game_name = "random_" + str(num_players) + "_" + str(args.depth) + "_" + str(args.branching_factor)
+    log_line("Building a " + game_name + " tree")
     random_tree = randomTree(args.depth, args.branching_factor, args.iset_probability, num_players,
                              min_utility = 0, max_utility = 1, int_utility = False)
-    log_line("Built a random tree with parameters: " + str(parameters_dict))
+    log_line("Built a " + game_name + " tree")
     cfr_tree = CFRTree(random_tree)
 
     results_file_name = results_directory + "random/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(args.depth) + \
                                 "_" + str(args.branching_factor)
-    results_file = open(results_file_name, "w+")
-    results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
-    results_file.close()
 
     with open(results_file_name + '.dat', 'w') as f:
         f.write(tree_to_colgen_dat_file(random_tree))
     log_line("Dat file created (for random tree).")
 
-    res = solve_function(cfr_tree)
-    log_line("Finished solving with " + args.algorithm + ".")
-    log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
-
-    results_file = open(results_file_name, "r")
-    old_data = json.load(results_file)
-    results_file.close()
-    old_data["total_duration"] = res['tot_time']
-    old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
-    old_data["utility"] = res['utility']
-    results_file = open(results_file_name, "w+")
-    results_file.write(json.dumps(old_data))
-    results_file.close()
+    run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
 if args.game == 'hanabi':
-    hanabi_tree = build_hanabi_tree(num_players, num_of_suits, color_distribution, cards_per_player, starting_clue_tokens)
-    log_line("Built a hanabi tree with parameters: " + str(parameters_dict))
-    cfr_tree = CFRTree(hanabi_tree)
-
     string_description = str(num_players) + '_' + str(num_of_suits) + '_' + \
                          str(color_distribution).replace(' ','').replace(',','_') + '_' + \
-                         str(cards_per_player) + '_' + str(starting_clue_tokens)   
+                         str(cards_per_player) + '_' + str(starting_clue_tokens)
+    game_name = "hanabi_" + string_description
+    log_line("Building a " + game_name + " tree")
+    hanabi_tree = build_hanabi_tree(num_players, num_of_suits, color_distribution, cards_per_player, starting_clue_tokens)
+    log_line("Built a " + game_name + " tree")
+    cfr_tree = CFRTree(hanabi_tree)
+
     results_file_name = results_directory + "hanabi/" + str(int(time.time())) + "_" + string_description
-    results_file = open(results_file_name, "w+")
-    results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
-    results_file.close()
 
-    res = solve_function(cfr_tree)
-    log_line("Finished solving with " + args.algorithm + ".")
-    log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
-
-    results_file = open(results_file_name, "r")
-    old_data = json.load(results_file)
-    results_file.close()
-    old_data["total_duration"] = res['tot_time']
-    old_data["average_iterations_per_second"] = number_iterations / res['tot_time']
-    old_data["utility"] = res['utility']
-    results_file = open(results_file_name, "w+")
-    results_file.write(json.dumps(old_data))
-    results_file.close()
+    run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
