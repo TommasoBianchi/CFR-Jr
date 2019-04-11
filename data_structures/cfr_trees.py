@@ -195,7 +195,13 @@ class CFRTree:
                     new_joint_distribution.append((joint_plan, joint_probability))
             joint_distribution = new_joint_distribution
 
-        return joint_distribution
+        reduced_joint_distribution = []
+
+        for (joint_plan, joint_probability) in joint_distribution:
+            reduced_joint_plan = CFRJointStrategy.reduceActionPlan(joint_plan, self)
+            reduced_joint_distribution.append((reduced_joint_plan, joint_probability))
+
+        return reduced_joint_distribution
 
     def buildJointFromMarginals_AllPlayersTogether(self):
 
