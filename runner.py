@@ -85,7 +85,7 @@ def log_result_point_callback(results_file_name):
         results_file.close()
     return __callback
 
-def solve_function(cfr_tree):
+def solve_function(cfr_tree, results_file_name):
     if args.algorithm == 'scfr':
         return SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
                              checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size,
@@ -131,11 +131,11 @@ sys.excepthook = log_except_hook
 def run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations):
     results_file = open(results_file_name, "w+")
     parameters_dict['infoset_amount'] = len(cfr_tree.information_sets)
-    parameters_dict['sequences_amount'] = count_sequences(cfr_tree)
+    #parameters_dict['sequences_amount'] = count_sequences(cfr_tree)
     results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
     results_file.close()
 
-    res = solve_function(cfr_tree)
+    res = solve_function(cfr_tree, results_file_name)
     log_line("Finished solving with " + args.algorithm + ".")
     log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
 
