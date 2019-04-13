@@ -135,7 +135,12 @@ def run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_it
     results_file.write(json.dumps({"parameters": parameters_dict, "data": []}))
     results_file.close()
 
-    res = solve_function(cfr_tree, results_file_name)
+    try:
+        res = solve_function(cfr_tree, results_file_name)
+    except:
+        log_line("\n\n --- AN ERROR HAS OCCURRED WHILE SOLVING --- \n\n")
+        sys.excepthook(*sys.exc_info())
+
     log_line("Finished solving with " + args.algorithm + ".")
     log_line("Time elapsed = " + str(res['tot_time']) + " seconds.\n")
 
