@@ -2,6 +2,11 @@ from data_structures.trees import Tree, Node, ChanceNode
 from functools import reduce
 from games.utilities import all_permutations, pair_to_number, number_to_pair, list_to_tuple
 from copy import deepcopy
+from enum import Enum
+
+class UtilitySplitter(Enum):
+    Uniform = 0
+    Competitive = 1
 
 class HanabiState:
     def __init__(self, remaining_deck, player_hands, cards_in_play, discarded_cards, clue_tokens_available, 
@@ -91,17 +96,22 @@ class HanabiState:
                 card = number_to_pair(card)
 
             if self.cards_in_play[card[1] - 1] != card[0] - 1:  # The card cannot be played, so lose (or lose a life)
-                return self.cards_in_play   # Return the cards in play so that the utility can be computed
+                return (self.cards_in_play, self.action_history)   # Return the cards in play and the action history so that the utility can be computed
             if self.remaining_turns_after_deck_end == 1:    # Available turns are finished, game ends
                 cards_in_play = self.cards_in_play.copy()
+                action_history = self.action_history.copy()
                 cards_in_play[card[1] - 1] += 1    # Play the card ('cause it was playable)
-                return cards_in_play   # Return the cards in play so that the utility can be computed
+                action_history.append('p.' + str(card))
+                return (cards_in_play, action_history)   # Return the cards in play so that the utility can be computed
 
             child_state = self.copy()
             child_state.cards_in_play[card[1] - 1] += 1    # Play the card
 
             if min(child_state.cards_in_play) == self.highest_card_number:  # Win and end
-                return self.cards_in_play   # Return the cards in play so that the utility can be computed
+                return (self.cards_in_play, self.action_history)   # Return the cards in play and the action history so that the utility can be computed
+
+            if card[0] == self.highest_card_number: # Give one more tokens each time a "pile" is completed
+                child_state.clue_tokens_available += 1
 
             if len(child_state.remaining_deck) > 0:
                 new_card = child_state.remaining_deck.pop(0)
@@ -127,7 +137,7 @@ class HanabiState:
                 card = number_to_pair(card)
 
             if self.remaining_turns_after_deck_end == 1:    # Available turns are finished, game ends
-                return self.cards_in_play   # Return the cards in play so that the utility can be computed
+                return (self.cards_in_play, self.action_history)   # Return the cards in play and the action history so that the utility can be computed
 
             child_state = self.copy()
             child_state.discarded_cards.append(card)    # Discard the card
@@ -155,7 +165,7 @@ class HanabiState:
             clue_value = int(action[4])
 
             if self.remaining_turns_after_deck_end == 1:    # Available turns are finished, game ends
-                return self.cards_in_play   # Return the cards in play so that the utility can be computed
+                return (self.cards_in_play, self.action_history)   # Return the cards in play and the action history so that the utility can be computed
 
             child_state = self.copy()
             child_state.clue_tokens_available -= 1  # Consume a clue token
@@ -212,14 +222,17 @@ class HanabiState:
             player_hands.append(deck[:cards_per_player])
             deck = deck[cards_per_player:]
 
+        highest_card_number = max(deck, key = lambda c: number_to_pair(c)[0] if type(c) == int else c[0])
+
         return HanabiState(remaining_deck = deck, player_hands = player_hands, 
                            cards_in_play = [0 for _ in range(num_colors)], discarded_cards = [], 
                            clue_tokens_available = starting_tokens, clue_history = [], action_history = [],
-                           highest_card_number = max(deck, key = lambda c: c[0])[0],
+                           highest_card_number = highest_card_number,
                            player_clued_hands = [[(0, 0) for _ in range(cards_per_player)] for _ in range(num_players)])                           
 
 def build_hanabi_tree(num_players, num_colors, color_distribution, num_cards_per_player, starting_tokens = 1,
-                      compress_card_representation = False, display_progress = False):
+                      compress_card_representation = False, display_progress = False,
+                      utility_splitter = UtilitySplitter.Uniform):
     """
     Build a tree for the game of Hanabi with a given number of players, a given number of cards in each player's
     hand, given cards colors and with a given distribution of cards inside each color (e.g. [3, 2, 2, 2, 1] is 
@@ -238,7 +251,7 @@ def build_hanabi_tree(num_players, num_colors, color_distribution, num_cards_per
             for c in range(num_colors):
                 card = (i + 1, c + 1)
                 if compress_card_representation:
-                    card = pair_to_number(card)
+                    card = pair_to_number(card[0], card[1])
                 all_cards.append(card)
 
     deck_permutations = all_permutations(all_cards)
@@ -265,11 +278,11 @@ def build_hanabi_tree(num_players, num_colors, color_distribution, num_cards_per
         if information_set == -1:
             information_sets[node_known_infos] = node.information_set
 
-        build_hanabi_state_tree(baseState, tree, information_sets, node, 0)
+        build_hanabi_state_tree(baseState, tree, information_sets, node, 0, utility_splitter)
 
     return tree
 
-def build_hanabi_state_tree(hanabiState, tree, information_sets, parent_node, current_player):
+def build_hanabi_state_tree(hanabiState, tree, information_sets, parent_node, current_player, utility_splitter):
     actions = hanabiState.getLegalActions(current_player)
     next_player = (current_player + 1) % tree.numOfPlayers
 
@@ -277,8 +290,9 @@ def build_hanabi_state_tree(hanabiState, tree, information_sets, parent_node, cu
         childState = hanabiState.getChildState(action)
 
         if type(childState) != HanabiState: # The game has ended, create a leaf
-            points = sum(childState)    # In this case, childState contains the final board as a list
-            tree.addLeaf(parent = parent_node, utility = [points] * tree.numOfPlayers, actionName = str(action))
+            (cards_in_play, action_history) = childState # In this case, childState contains the final board and the action history
+            utility = build_hanabi_utility(tree.numOfPlayers, utility_splitter, cards_in_play, action_history)    
+            tree.addLeaf(parent = parent_node, utility = utility, actionName = str(action))
             continue
 
         node_known_infos = childState.toPlayerState(next_player)
@@ -293,9 +307,23 @@ def build_hanabi_state_tree(hanabiState, tree, information_sets, parent_node, cu
         if information_set == -1:
             information_sets[node_known_infos] = node.information_set
 
-        build_hanabi_state_tree(childState, tree, information_sets, node, next_player)
+        build_hanabi_state_tree(childState, tree, information_sets, node, next_player, utility_splitter)
 
+def build_hanabi_utility(num_players, utility_splitter, cards_in_play, action_history):
+    if utility_splitter == UtilitySplitter.Uniform:
+        return [sum(cards_in_play) for _ in range(num_players)]
 
+    utility = [0 for _ in range(num_players)]
+
+    for (c, r) in enumerate(cards_in_play):
+        c += 1
+        if r == 0:
+            continue
+
+        first_player = action_history.index('p.' + str((r, c))) % num_players
+        utility[first_player] += r
+
+    return utility
 
 # Some possible deck structures:
 #

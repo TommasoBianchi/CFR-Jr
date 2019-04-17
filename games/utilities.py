@@ -24,14 +24,17 @@ def all_permutations(items):
 
     return permutations
 
-def pair_to_number(x, y):
+def pair_to_number(x, y, force_int = True):
     """
     Implementation of the Cantor Pairing Function.
     """
 
-    return (x + y + 1) * (x + y) / 2 + y
+    z = (x + y + 1) * (x + y) / 2 + y
+    if force_int:
+        z = int(z)
+    return z
 
-def number_to_pair(z):
+def number_to_pair(z, force_int = True):
     """
     Inverse of the Cantor Pairing Function.
     """
@@ -40,7 +43,7 @@ def number_to_pair(z):
     t = (w * w + w) / 2
     y = z - t
     x = w - y
-    return (x, y)
+    return (int(x), int(y)) if force_int else (x, y)
 
 def list_to_tuple(l):
     if type(l) not in [list, tuple]:
