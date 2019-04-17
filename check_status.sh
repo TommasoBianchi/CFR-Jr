@@ -8,6 +8,10 @@ echo ""
 results_folder=$1
 
 for game in kuhn leduc goofspiel random hanabi; do
+	if [ ! -d $results_folder/$game ]; then
+		continue
+	fi
+
 	echo ""
 	echo -e "\033[0;32m$game\033[0m"
 	echo ""
