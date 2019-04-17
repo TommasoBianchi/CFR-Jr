@@ -311,7 +311,7 @@ def build_hanabi_state_tree(hanabiState, tree, information_sets, parent_node, cu
 
 def build_hanabi_utility(num_players, utility_splitter, cards_in_play, action_history):
     if utility_splitter == UtilitySplitter.Uniform:
-        return [sum(cards_in_play) for _ in range(num_players)]
+        return [sum(cards_in_play) / num_players for _ in range(num_players)]
 
     utility = [0 for _ in range(num_players)]
 
