@@ -1,7 +1,7 @@
 from games.kuhn import build_kuhn_tree
 from games.leduc import build_leduc_tree
 from games.goofspiel import build_goofspiel_tree, TieSolver
-from games.hanabi import build_hanabi_tree
+from games.hanabi import build_hanabi_tree, UtilitySplitter
 
 from data_structures.trees import randomTree
 from data_structures.cfr_trees import CFRTree
@@ -32,6 +32,8 @@ parser.add_argument('--iset_probability', '-ip', type=float, default=1, help='in
 parser.add_argument('--cards_per_player', '-cpp', type=int, default=1, help='how many cards are dealt to each player (only for hanabi')
 parser.add_argument('--starting_clue_tokens', '-sct', type=int, default=1, help='how many clue tokens are available at the beginning of the game (only for hanabi)')
 parser.add_argument('--color_distribution', '-cd', type=int, default=[1,1], nargs='*', help='distribution of card values inside of a single color/suit (only for hanabi')
+parser.add_argument('--hanabi_utility_splitter', '-hus', type=str, default='uniform', help='way to split utility between player in hanabi',
+                    choices=['uniform', 'competitive'])
 
 parser.add_argument('--number_iterations', '-t', type=int, default=100000, help='number of iterations to run')
 parser.add_argument('--bootstrap_iterations', '-bt', type=int, default=0, help='number of iterations to run without sampling')
@@ -57,6 +59,7 @@ tie_solver = {'accumulate':TieSolver.Accumulate,'discard_if_all':TieSolver.Disca
 cards_per_player = args.cards_per_player
 starting_clue_tokens = args.starting_clue_tokens
 color_distribution = args.color_distribution
+utility_splitter = {'uniform':UtilitySplitter.Uniform,'competitive':UtilitySplitter.Competitive}[args.hanabi_utility_splitter]
 
 number_iterations = args.number_iterations
 bootstrap_iterations = args.bootstrap_iterations
@@ -177,7 +180,7 @@ if args.game == 'leduc':
     run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
 if args.game == 'goofspiel':
-    game_name = "goofspiel_" + str(num_players) + "_" + str(rank)
+    game_name = "goofspiel_" + str(num_players) + "_" + str(rank) + "_" + tie_solver.name
     log_line("Building a " + game_name + " tree")
     goofspiel_tree = build_goofspiel_tree(num_players, rank, tie_solver)
     log_line("Built a " + game_name + " tree")
@@ -207,10 +210,11 @@ if args.game == 'random':
 if args.game == 'hanabi':
     string_description = str(num_players) + '_' + str(num_of_suits) + '_' + \
                          str(color_distribution).replace(' ','').replace(',','_') + '_' + \
-                         str(cards_per_player) + '_' + str(starting_clue_tokens)
+                         str(cards_per_player) + '_' + str(starting_clue_tokens) + '_' + utility_splitter.name
     game_name = "hanabi_" + string_description
     log_line("Building a " + game_name + " tree")
-    hanabi_tree = build_hanabi_tree(num_players, num_of_suits, color_distribution, cards_per_player, starting_clue_tokens)
+    hanabi_tree = build_hanabi_tree(num_players, num_of_suits, color_distribution, 
+                                    cards_per_player, starting_clue_tokens, utility_splitter = utility_splitter)
     log_line("Built a " + game_name + " tree")
     cfr_tree = CFRTree(hanabi_tree)
 
