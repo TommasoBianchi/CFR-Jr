@@ -15,20 +15,13 @@ def build_permutation_game_tree(n_players, branching_factor, utility_params):
 		node = tree.addNode(player = ordering[0], parent = bottom_node, 
 							information_set = last_infoset_id + ordering[0] - n_players)
 		build_permutation_lower_tree(tree, branching_factor, node, ordering[1:], 
-									 utility_params, last_infoset_id, n_players)
+									 utility_params, last_infoset_id, n_players, [])
 
 		ordering = ordering_permutations[2 * i + 1]
 		node = tree.addNode(player = ordering[0], parent = bottom_node, 
 							information_set = last_infoset_id + ordering[0] - n_players)
 		build_permutation_lower_tree(tree, branching_factor, node, ordering[1:], 
-									 utility_params, last_infoset_id, n_players)
-
-	# for (ordering, node) in zip(ordering_permutations, bottom_nodes):
-	# 	node.information_set = last_infoset_id + ordering[0] - n_players + 1
-	# 	node.player = ordering[0]
-
-	# 	build_permutation_lower_tree(tree, branching_factor, node, ordering[1:], utility_params,
-	# 								 last_infoset_id, n_players)
+									 utility_params, last_infoset_id, n_players, [])
 
 	return tree
 
@@ -45,14 +38,22 @@ def build_permutation_upper_tree(tree, current_node, n_actions):
 	return bottom_nodes
 
 def build_permutation_lower_tree(tree, branching_factor, current_node, ordering, utility_params,
-								 last_infoset_id, n_players):
+								 last_infoset_id, n_players, action_history):
 	if len(ordering) == 0:
-		for _ in range(branching_factor):
-			tree.addLeaf(current_node, [0] * ((n_players - 1) + n_players))
+		for a in range(branching_factor):
+			tree.addLeaf(current_node, get_permutation_utility(action_history + [ a ], utility_params, n_players))
 		return
 
-	for _ in range(branching_factor):
+	for a in range(branching_factor):
 		node = tree.addNode(player = ordering[0], information_set = last_infoset_id + ordering[0] - n_players,
 							parent = current_node)
 		build_permutation_lower_tree(tree, branching_factor, node, ordering[1:], utility_params,
-									 last_infoset_id, n_players)
+									 last_infoset_id, n_players, action_history + [ a ])
+
+def get_permutation_utility(action_history, utility_params, n_players):
+	u = 0
+
+	for (a1, a2) in zip(action_history, action_history[1:]):
+		u += utility_params[a1][a2]
+
+	return [u for _ in range((n_players - 1) + n_players)]
