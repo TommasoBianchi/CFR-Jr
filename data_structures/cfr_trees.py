@@ -406,21 +406,18 @@ class CFRNode:
         pi containing the probability of reaching this node from the point of view of each player.
         """
 
-        self.reachability = pi[self.player]
-
-        if(self.isLeaf()):
+        if(self.isLeaf() or sum(pi) == 0):
             return
+
+        self.information_set.reachability = max(self.information_set.reachability, pi[self.player])
 
         sampled_action = actionPlan[self.information_set.id]
 
         for a in range(len(self.children)):
-            if(sampled_action == a):
-                self.children[a].computeReachability(actionPlan, pi)
+            if a == sampled_action:
+                self.children[sampled_action].computeReachability(actionPlan, pi)
             else:
-                old_pi = pi[self.player]
-                pi[self.player] = 0
-                self.children[a].computeReachability(actionPlan, pi)
-                pi[self.player] = old_pi
+                self.children[a].computeReachability(actionPlan, pi[:self.player] + [ 0 ] + pi[self.player+1:])
 
     def buildRealizationForm(self, targetPlayer, p):
         """
@@ -607,11 +604,6 @@ class CFRChanceNode(CFRNode):
         Computes the reachability of this node and its descendants under the given action plan, provided a vector
         pi containing the probability of reaching this node from the point of view of each player.
         """
-
-        if(self.parent != None):
-            self.reachability = pi[self.parent.player]
-        else:
-            self.reachability = 1
 
         for a in range(len(self.children)):
             self.children[a].computeReachability(actionPlan, pi)
@@ -887,6 +879,14 @@ class CFRInformationSet:
 
         self.supportingPlanInfo = (action, omega)
 
+    def computeReachability(self, actionPlan):
+
+        self.reachability = 1
+        sampled_action = actionPlan[self.id]
+
+        for iset in self.children_infoset[sampled_action]:
+            iset.computeReachability(actionPlan)
+
 class CFRJointStrategy:
     """
     A joint strategy progressively built by the SCFR algorithm.
@@ -976,11 +976,18 @@ class CFRJointStrategy:
 
         reducedActionPlan = {}
 
-        tree.root.computeReachability(actionPlan, [1] * tree.numOfPlayers)
+        for iset in tree.information_sets.values():
+            iset.reachability = 0
+
+        #tree.root.computeReachability(actionPlan, [1 for _ in range(tree.numOfPlayers)])
+
+        for iset in tree.information_sets.values():
+            if len(iset.sequence) == 0:
+                iset.computeReachability(actionPlan)
 
         for (id, iset) in tree.information_sets.items():
-            reachability = max(map(lambda n: n.reachability, iset.nodes))
-            if(reachability > 0):
+            # reachability = max(map(lambda n: n.reachability, iset.nodes))
+            if(iset.reachability > 0):
                 reducedActionPlan[id] = actionPlan[id]
 
         return reducedActionPlan
