@@ -14,6 +14,7 @@ def SolveWithReconstructionCFR(cfr_tree, iterations, perc = 10, show_perc = Fals
     graph_data = []
 
     start_time = time.time()
+    reconstruction_time = 0
     last_checkpoint_time = start_time
 
     player_count = cfr_tree.numOfPlayers
@@ -34,10 +35,12 @@ def SolveWithReconstructionCFR(cfr_tree, iterations, perc = 10, show_perc = Fals
 
         # Reconstruct a joint from the marginals and add it to the current joint strategy
         if (i % reconstructEveryIteration == 0):
+            reconstruction_start_time = time.time()
             if reconstructPlayersTogether:
                 jointStrategy.addJointDistribution(cfr_tree.buildJointFromMarginals_AllPlayersTogether())
             else:
                 jointStrategy.addJointDistribution(cfr_tree.buildJointFromMarginals(select_optimal_plan = reconstructWithOptimalPlan))                
+            reconstruction_time += (time.time() - reconstruction_start_time)
 
         if(checkEveryIteration > 0 and i % checkEveryIteration == 0):
             data = {'epsilon': cfr_tree.checkEquilibrium(jointStrategy),
@@ -45,7 +48,9 @@ def SolveWithReconstructionCFR(cfr_tree, iterations, perc = 10, show_perc = Fals
                     'joint_support_size': len(jointStrategy.plans),
                     'iteration_number': i,
                     'duration': time.time() - last_checkpoint_time,
+                    'reconstruction_time': reconstruction_time,
                     'utility': u}
+            reconstruction_time = 0
             graph_data.append(data)
 
             if(check_callback != None):
