@@ -21,7 +21,8 @@ def epsilon_graph(results, xaxis = 'iterations', ybottom = 0):
 	plt.ylim(bottom = ybottom)
 	plt.show()
 
-def comparative_epsilon_graph(results_array, delta_utility = 1, xaxis = 'iterations', 
+def comparative_epsilon_graph(results_array, delta_utility = 1, max_social_welfare = 1,
+							  xaxis = 'iterations', yaxis = 'epsilon',
 							  xlims = None, ylims = None, legend = None):
 	"""
 	Draw graph for the epsilons from the data obtained from multiple runs of SCFR in a single graph.
@@ -32,12 +33,21 @@ def comparative_epsilon_graph(results_array, delta_utility = 1, xaxis = 'iterati
 		durations = list(map(lambda el: el['duration'], res['graph_data']))
 		cum_durations = [sum(durations[:i]) for i in range(len(durations))]
 		epsilons_graph = list(map(lambda el: max(0, -min(el['epsilon'])) / delta_utility, res['graph_data']))
+		sw_graph = list(map(lambda el: sum(el['utility']) / max_social_welfare, res['graph_data']))
+		if yaxis == 'epsilon':
+			ydata = epsilons_graph
+		elif yaxis == 'social_welfare':
+			ydata = sw_graph
 		if xaxis == 'iterations':
-			plt.plot(iteration_counts, epsilons_graph)
+			xdata = iteration_counts
 		elif xaxis == 'time':
-			plt.plot(cum_durations, epsilons_graph)
+			xdata = cum_durations
+		plt.plot(xdata, ydata)
 
-	plt.ylabel("Epsilon [%]")
+	if yaxis == 'epsilon':
+		plt.ylabel("Epsilon [%]")
+	elif yaxis == 'social_welfare':
+		plt.ylabel("Social welfare [%]")
 	if xaxis == 'iterations':
 		plt.xlabel("Iteration")
 	elif xaxis == 'time':
