@@ -186,7 +186,8 @@ if args.game == 'goofspiel':
     log_line("Built a " + game_name + " tree")
     cfr_tree = CFRTree(goofspiel_tree)
 
-    results_file_name = results_directory + "goofspiel/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank)
+    results_file_name = results_directory + "goofspiel/" + str(int(time.time())) + \
+                        "_" + str(num_players) + "_" + str(rank) + '_' + tie_solver.name
     
     run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
