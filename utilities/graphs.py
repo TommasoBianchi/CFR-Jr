@@ -28,7 +28,10 @@ def comparative_epsilon_graph(results_array, delta_utility = 1, max_social_welfa
 	Draw graph for the epsilons from the data obtained from multiple runs of SCFR in a single graph.
 	"""
 
-	for res in results_array:
+	if legend == None:
+		legend = ["Result " + str(i+1) for i in range(len(results_array))]
+
+	for (i, res) in enumerate(results_array):
 		iteration_counts = list(map(lambda el: el['iteration_number'], res['graph_data']))
 		durations = list(map(lambda el: el['duration'], res['graph_data']))
 		cum_durations = [sum(durations[:i]) for i in range(len(durations))]
@@ -53,9 +56,7 @@ def comparative_epsilon_graph(results_array, delta_utility = 1, max_social_welfa
 	elif xaxis == 'time':
 		plt.xlabel("Time [s]")
 
-	if legend == None:
-		legend = ["Result " + str(i+1) for i in range(len(results_array))]
-	plt.legend(legend)
+	plt.legend(legend, bbox_to_anchor = (1.05, 1), loc = 2)
 	
 	if xlims != None:
 		plt.xlim(xlims)
