@@ -22,12 +22,10 @@ def SolveWithReconstructionCFR(cfr_tree, iterations, perc = 10, show_perc = Fals
     for i in range(1, iterations+1):
         if(show_perc and i % (iterations / 100 * perc) == 0):
             print(str(i / (iterations / 100 * perc) * perc) + "%")
-            
-        u = []
 
         # Run CFR for each player
         for p in range(player_count):
-            u.append(CFR(cfr_tree.root, p, [1] * player_count, use_cfr_plus))
+            CFR(cfr_tree.root, p, [1] * player_count, use_cfr_plus)
             
         # Update the current strategy for each information set
         for infoset in cfr_tree.information_sets.values():
@@ -49,7 +47,7 @@ def SolveWithReconstructionCFR(cfr_tree, iterations, perc = 10, show_perc = Fals
                     'iteration_number': i,
                     'duration': time.time() - last_checkpoint_time,
                     'reconstruction_time': reconstruction_time,
-                    'utility': u}
+                    'utility': cfr_tree.getUtility(jointStrategy)}
             reconstruction_time = 0
             graph_data.append(data)
 
@@ -58,4 +56,4 @@ def SolveWithReconstructionCFR(cfr_tree, iterations, perc = 10, show_perc = Fals
                 
             last_checkpoint_time = time.time()
         
-    return {'utility': u, 'graph_data': graph_data, 'tot_time': time.time() - start_time, 'joint': jointStrategy}
+    return {'utility': cfr_tree.getUtility(jointStrategy), 'graph_data': graph_data, 'tot_time': time.time() - start_time, 'joint': jointStrategy}

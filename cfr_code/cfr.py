@@ -61,12 +61,10 @@ def SolveWithCFR(cfr_tree, iterations, perc = 10, show_perc = False, checkEveryI
     for i in range(1, iterations + 1):
         if(show_perc and i % (iterations / 100 * perc) == 0):
             print(str(i / (iterations / 100 * perc) * perc) + "%")
-            
-        u = []
 
         # Run CFR for each player
         for p in range(player_count):
-            u.append(CFR(cfr_tree.root, p, [1] * player_count, use_cfr_plus))
+            CFR(cfr_tree.root, p, [1] * player_count, use_cfr_plus)
             
         # Update the current strategy for each information set
         for infoset in cfr_tree.information_sets.values():
@@ -76,7 +74,7 @@ def SolveWithCFR(cfr_tree, iterations, perc = 10, show_perc = False, checkEveryI
             data = {'epsilon': cfr_tree.checkMarginalsEpsilon(),
                     'iteration_number': i,
                     'duration': time.time() - last_checkpoint_time,
-                    'utility': u}
+                    'utility': cfr_tree.root.getExpectedUtility()}
             graph_data.append(data)
 
             if(check_callback != None):
@@ -84,4 +82,4 @@ def SolveWithCFR(cfr_tree, iterations, perc = 10, show_perc = False, checkEveryI
                 
             last_checkpoint_time = time.time()
         
-    return {'utility': u, 'graph_data': graph_data, 'tot_time': time.time() - start_time}
+    return {'utility': cfr_tree.root.getExpectedUtility(), 'graph_data': graph_data, 'tot_time': time.time() - start_time}
