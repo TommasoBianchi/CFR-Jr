@@ -142,8 +142,7 @@ class CFRTree:
             player_plan_distribution = []
 
             nonZeroLeaf = True
-            i = 0
-            while nonZeroLeaf and i < 10:
+            while nonZeroLeaf:
                 # for l in leaves:
                 #     print((l.id, l.base_node.getSequence(p), l.omega))
 
@@ -172,7 +171,6 @@ class CFRTree:
                 for t in self.root.terminalsUnderPlan(p, best_plan):
                     t.omega -= best_plan_value
 
-                i += 1
                 nonZeroLeaf = False
                 for l in leaves:
                     if l.omega > 0.001:
