@@ -21,7 +21,10 @@ def build_coordination_game_subtree(tree, current_node, current_player, branchin
 		build_coordination_game_subtree(tree, node, current_player + 1, branching_factor, action_history + [ a ])
 
 def get_coordination_utility(action_history, n_players):
+	u = [0 for _ in range(n_players)]
+
 	if max(action_history) == min(action_history):
-		return [randint(1, 5) for _ in range(n_players)]
-	
-	return [0 for _ in range(n_players)]
+		x = randint(1, 5)
+		u = [x for _ in range(n_players)]
+
+	return u
