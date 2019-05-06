@@ -9,6 +9,9 @@ class TieSolver(Enum):
     DiscardIfHigh = 2
     DiscardAlways = 3
 
+    # More utility type than TieSolvers...
+    CyclicUtility = 4
+
 def build_goofspiel_tree(num_players, rank, tie_solver = TieSolver.Accumulate):
     """
     Build a tree for the game of Goofspiel with a given number of players and a given number of ranks in the deck (i.e. how
@@ -123,11 +126,21 @@ def goofspiel_utility(hand, moves, tie_solver = TieSolver.Accumulate):
         winner = winner_player(round_moves, tie_solver)
 
         if(winner == -1):
-            if tie_solver == TieSolver.Accumulate:
+            if tie_solver == TieSolver.Accumulate or tie_solver == TieSolver.CyclicUtility:
                 additional_utility += hand[i]
         else:
             u[winner] += hand[i] + additional_utility
             additional_utility = 0
+
+    if tie_solver == TieSolver.CyclicUtility:
+	    round_zero_moves = [moves[p][0] for p in range(num_players)]
+	    first_cards_equal = (max(round_zero_moves) == min(round_zero_moves))
+	    highest_card = max(hand)
+	    tot = 0
+	    for (i, uval) in enumerate(u):
+	    	tot += uval * (i + 1)
+	    u = [0 for _ in u]
+	    u[tot % num_players] = 2 if first_cards_equal else 1
 
     return u
 
