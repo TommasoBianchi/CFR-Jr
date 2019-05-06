@@ -8,9 +8,7 @@ class TieSolver(Enum):
     DiscardIfAll = 1
     DiscardIfHigh = 2
     DiscardAlways = 3
-
-    # More utility type than TieSolvers...
-    CyclicUtility = 4
+    CyclicUtility = 4 # More utility type than TieSolver...
 
 def build_goofspiel_tree(num_players, rank, tie_solver = TieSolver.Accumulate):
     """
@@ -67,7 +65,8 @@ def build_goofspiel_hand_tree(hand, remaining_cards, played_cards, current_round
             remaining_cards[current_player].remove(card)
             played_cards[current_player].append(card)
             final_played_cards = [played_cards[i] + remaining_cards[i] for i in range(len(played_cards))]
-            l = tree.addLeaf(parent = current_node, utility = goofspiel_utility(hand, final_played_cards, tie_solver))
+            l = tree.addLeaf(parent = current_node, utility = goofspiel_utility(hand, final_played_cards, tie_solver),
+                             actionName = actionName)
             remaining_cards[current_player].append(card)
             played_cards[current_player].remove(card)
         return
@@ -133,14 +132,14 @@ def goofspiel_utility(hand, moves, tie_solver = TieSolver.Accumulate):
             additional_utility = 0
 
     if tie_solver == TieSolver.CyclicUtility:
-	    round_zero_moves = [moves[p][0] for p in range(num_players)]
-	    first_cards_equal = (max(round_zero_moves) == min(round_zero_moves))
-	    highest_card = max(hand)
-	    tot = 0
-	    for (i, uval) in enumerate(u):
-	    	tot += uval * (i + 1)
-	    u = [0 for _ in u]
-	    u[tot % num_players] = 2 if first_cards_equal else 1
+        round_zero_moves = [moves[p][0] for p in range(num_players)]
+        first_cards_equal = (max(round_zero_moves) == min(round_zero_moves))
+        highest_card = max(hand)
+        tot = 0
+        for (i, uval) in enumerate(u):
+            tot += uval * (i + 1)
+        u = [0 for _ in u]
+        u[tot % num_players] = 2 if first_cards_equal else 1
 
     return u
 
