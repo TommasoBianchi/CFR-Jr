@@ -74,7 +74,7 @@ def build_goofspiel_hand_tree(hand, remaining_cards, played_cards, current_round
     for card in current_player_cards:
         actionName = "p" + str(current_node.player) + "c" + str(card)
 
-        node_known_info = (next_player, next_round, tuple(hand[:next_round]), tuple([tuple(c[:next_round]) for c in played_cards]))
+        node_known_info = (next_player, next_round, tuple(hand[:next_round+1]), tuple([tuple(c[:next_round]) for c in played_cards]))
         if node_known_info in information_sets:
             information_set = information_sets[node_known_info]
         else:
