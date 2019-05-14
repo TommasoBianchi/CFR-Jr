@@ -14,6 +14,7 @@ import time
 import json
 import argparse
 from functools import reduce
+import os
 
 parser = argparse.ArgumentParser(description='runner parser')
 
@@ -157,6 +158,11 @@ def run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_it
     results_file.write(json.dumps(old_data))
     results_file.close()
 
+def make_filename_unique(file_path):
+    while os.path.isfile(file_path):
+        file_path += '_'
+    return file_path
+
 if args.game == 'kuhn':
     game_name = "kuhn_" + str(num_players) + "_" + str(rank)
     log_line("Building a " + game_name + " tree")
@@ -165,6 +171,7 @@ if args.game == 'kuhn':
     cfr_tree = CFRTree(kuhn_tree)
     
     results_file_name = results_directory + "kuhn/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(rank)
+    results_file_name = make_filename_unique(results_file_name)
     
     run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
@@ -176,6 +183,7 @@ if args.game == 'leduc':
     cfr_tree = CFRTree(leduc_tree)
 
     results_file_name = results_directory + "leduc/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(num_of_suits) + "_" + str(rank)
+    results_file_name = make_filename_unique(results_file_name)
     
     run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
@@ -188,7 +196,8 @@ if args.game == 'goofspiel':
 
     results_file_name = results_directory + "goofspiel/" + str(int(time.time())) + \
                         "_" + str(num_players) + "_" + str(rank) + '_' + tie_solver.name
-    
+    results_file_name = make_filename_unique(results_file_name)
+
     run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
 if args.game == 'random':
@@ -201,6 +210,7 @@ if args.game == 'random':
 
     results_file_name = results_directory + "random/" + str(int(time.time())) + "_" + str(num_players) + "_" + str(args.depth) + \
                                 "_" + str(args.branching_factor)
+    results_file_name = make_filename_unique(results_file_name)
 
     with open(results_file_name + '.dat', 'w') as f:
         f.write(tree_to_colgen_dat_file(random_tree))
@@ -220,5 +230,6 @@ if args.game == 'hanabi':
     cfr_tree = CFRTree(hanabi_tree)
 
     results_file_name = results_directory + "hanabi/" + str(int(time.time())) + "_" + string_description
+    results_file_name = make_filename_unique(results_file_name)
 
     run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
