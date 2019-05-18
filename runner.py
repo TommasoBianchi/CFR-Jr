@@ -216,9 +216,9 @@ if args.game == 'random':
                                 "_" + str(args.branching_factor)
     results_file_name = make_filename_unique(results_file_name)
 
-    with open(results_file_name + '.dat', 'w') as f:
-        f.write(tree_to_colgen_dat_file(random_tree))
-    log_line("Dat file created (for random tree).")
+    # with open(results_file_name + '.dat', 'w') as f:
+    #     f.write(tree_to_colgen_dat_file(random_tree))
+    # log_line("Dat file created (for random tree).")
 
     run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
