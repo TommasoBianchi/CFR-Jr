@@ -136,7 +136,7 @@ def run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_it
     results_file = open(results_file_name, "w+")
     parameters_dict['nodes_amount'] = sum(map(lambda i: len(i.nodes), cfr_tree.information_sets.values()))
     leaves = set()
-    cfr_tree.find_terminals(leaves)
+    cfr_tree.root.find_terminals(leaves)
     parameters_dict['leaves_amount'] = len(leaves)
     parameters_dict['infoset_amount'] = len(cfr_tree.information_sets)
     #parameters_dict['sequences_amount'] = count_sequences(cfr_tree)
