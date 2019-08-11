@@ -48,8 +48,12 @@ parser.add_argument('--algorithm', '-a', type=str, default='scfr', choices=['scf
 parser.add_argument('--logfile', '-log', type=str, default=(str(int(time.time())) + "log.log"), help='file in which to log events and errors')
 parser.add_argument('--results', '-res', type=str, default='results/', help='folder where to put the results (must contain subfolders for each game')
 
+parser.add_argument('--build_datfile', '-dat', const=True, nargs='?', help='output the corresponding datfile')
+
 args = parser.parse_args()
 parameters_dict = vars(args)
+
+game = args.game
 
 num_players = args.players
 rank = args.rank
@@ -72,11 +76,17 @@ reconstructWithOptimalPlan = args.reconstruct_not_optimal_plan == None
 log_file_name = args.logfile
 results_directory = args.results
 
+build_datfile = args.build_datfile
+if build_datfile and game != "random":
+    log_line("ERROR: datfile are currently supported only for random games")
+    exit()
+
 def log_line(string):
     log_file = open(log_file_name, "a")
     log_file.write(time.strftime("%Y.%m.%d %H:%M:%S: ") + string + "\n")
     log_file.flush()
     log_file.close()
+    print(string)
 
 def log_result_point_callback(results_file_name):
     def __callback(datapoint):
@@ -133,6 +143,7 @@ sys.excepthook = log_except_hook
 # ----------------------------------------
 
 def run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations):
+    results_file_name += ".result"
     results_file = open(results_file_name, "w+")
     parameters_dict['nodes_amount'] = sum(map(lambda i: len(i.nodes), cfr_tree.information_sets.values()))
     leaves = set()
@@ -167,7 +178,7 @@ def make_filename_unique(file_path):
         file_path += '_'
     return file_path
 
-if args.game == 'kuhn':
+if game == 'kuhn':
     game_name = "kuhn_" + str(num_players) + "_" + str(rank)
     log_line("Building a " + game_name + " tree")
     kuhn_tree = build_kuhn_tree(num_players, rank)
@@ -179,7 +190,7 @@ if args.game == 'kuhn':
     
     run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
-if args.game == 'leduc':
+if game == 'leduc':
     game_name = "leduc_" + str(num_players) + "_" + str(num_of_suits) + "_" + str(rank)
     log_line("Building a " + game_name + " tree")
     leduc_tree = build_leduc_tree(num_players, num_of_suits, rank, betting_parameters)
@@ -191,7 +202,7 @@ if args.game == 'leduc':
     
     run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
-if args.game == 'goofspiel':
+if game == 'goofspiel':
     game_name = "goofspiel_" + str(num_players) + "_" + str(rank) + "_" + tie_solver.name
     log_line("Building a " + game_name + " tree")
     goofspiel_tree = build_goofspiel_tree(num_players, rank, tie_solver)
@@ -204,7 +215,7 @@ if args.game == 'goofspiel':
 
     run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
-if args.game == 'random':
+if game == 'random':
     game_name = "random_" + str(num_players) + "_" + str(args.depth) + "_" + str(args.branching_factor)
     log_line("Building a " + game_name + " tree")
     random_tree = randomTree(args.depth, args.branching_factor, args.iset_probability, num_players,
@@ -216,13 +227,14 @@ if args.game == 'random':
                                 "_" + str(args.branching_factor)
     results_file_name = make_filename_unique(results_file_name)
 
-    # with open(results_file_name + '.dat', 'w') as f:
-    #     f.write(tree_to_colgen_dat_file(random_tree))
-    # log_line("Dat file created (for random tree).")
+    if build_datfile:
+        with open(results_file_name + '.dat', 'w') as f:
+            f.write(tree_to_colgen_dat_file(random_tree))
+        log_line("Dat file created (for random tree).")
 
     run_experiment(cfr_tree, results_file_name, parameters_dict, args, number_iterations)
 
-if args.game == 'hanabi':
+if game == 'hanabi':
     string_description = str(num_players) + '_' + str(num_of_suits) + '_' + \
                          str(color_distribution).replace(' ','').replace(',','_') + '_' + \
                          str(cards_per_player) + '_' + str(starting_clue_tokens) + '_' + utility_splitter.name
