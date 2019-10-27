@@ -43,7 +43,7 @@ parser.add_argument('--bound_joint_size', '-bjs', const=True, nargs='?', help='b
 parser.add_argument('--reconstruct_every_iteration', '-rei', type=int, default=1, help='every how many iterations to reconstruct a joint from the marginals')
 parser.add_argument('--reconstruct_not_optimal_plan', '-rnop', const=True, nargs='?', help='do not try to find the optimal plan to reconstruct at each reconstruction iteration')
 
-parser.add_argument('--algorithm', '-a', type=str, default='scfr', choices=['scfr', 'cfr', 'cfr+', 'rcfr'], help='algorithm to be used')
+parser.add_argument('--algorithm', '-a', type=str, default='scfr', choices=['cfr-s', 'cfr', 'cfr+', 'cfr-jr'], help='algorithm to be used')
 
 parser.add_argument('--logfile', '-log', type=str, default=(str(int(time.time())) + "log.log"), help='file in which to log events and errors')
 parser.add_argument('--results', '-res', type=str, default='results/', help='folder where to put the results (must contain subfolders for each game')
@@ -100,14 +100,14 @@ def log_result_point_callback(results_file_name):
     return __callback
 
 def solve_function(cfr_tree, results_file_name):
-    if args.algorithm == 'scfr':
+    if args.algorithm == 'cfr-s':
         return SolveWithSampleCFR(cfr_tree, number_iterations, bootstrap_iterations = bootstrap_iterations,
                              checkEveryIteration = check_every_iteration, bound_joint_size = bound_joint_size,
                              check_callback = log_result_point_callback(results_file_name))
     if args.algorithm == 'cfr' or args.algorithm == 'cfr+':
         return SolveWithCFR(cfr_tree, number_iterations, checkEveryIteration = check_every_iteration,
                             check_callback = log_result_point_callback(results_file_name), use_cfr_plus = args.algorithm == 'cfr+')
-    if args.algorithm == 'rcfr':
+    if args.algorithm == 'cfr-jr':
         return SolveWithReconstructionCFR(cfr_tree, number_iterations, checkEveryIteration = check_every_iteration,
                                           reconstructEveryIteration = reconstructEveryIteration,
                                           reconstructWithOptimalPlan = reconstructWithOptimalPlan,
